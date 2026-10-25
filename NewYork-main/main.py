@@ -1133,3 +1133,4 @@ async def test_ws_redirect():
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=CONFIG["port"], log_level="info", workers=1)
+    
