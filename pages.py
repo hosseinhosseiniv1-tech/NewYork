@@ -1,2332 +1,3114 @@
-# pages.py - Lumen Gate v11
-# Contains: LOGIN_HTML, DASHBOARD_HTML, NOT_FOUND_HTML and get_public_page_html().
-# The UI is a self-contained design system (CSS custom properties, dark + light themes).
-# Markup IDs, inline handlers and API calls are unchanged from the previous version.
+# pages.py — Gateway v12
+# Contains: LOGIN_HTML, DASHBOARD_HTML, get_public_page_html()
+# Design system: "terminal-native" identity — electric indigo + ember coral
+# on a graphite base, mono-first typography, ticket-shaped config cards.
+# All strings, comments and identifiers are in English.
 
+LOGO_B64 = (
+    "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARnQU1B"
+    "AACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAADkSURBVGhD7dqxDcIwEIXhFxegtGAC"
+    "JmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmAC"
+    "JmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmAC"
+    "JmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmAC"
+    "JmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmAC"
+    "JmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmAC"
+    "JmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmACJmAC"
+)
+
+# ── Shared design tokens & base CSS ──────────────────────────────────────────
+# Extracted so login / dashboard / public pages all share one identity.
+_COMMON_CSS = r"""
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  /* Brand */
+  --c-indigo-300:#8E8EF8;--c-indigo-400:#7070F5;--c-indigo-500:#5B5BF7;
+  --c-indigo-600:#4949E8;--c-indigo-700:#3838C9;
+  --c-coral-500:#FF6B4A;--c-coral-600:#F05334;
+  /* Semantic hues */
+  --c-emerald-400:#34D399;--c-emerald-500:#10B981;--c-emerald-600:#059669;
+  --c-amber-400:#FBBF24;--c-amber-500:#F59E0B;--c-amber-600:#D97706;
+  --c-rose-400:#FB7185;--c-rose-500:#F43F5E;--c-rose-600:#E11D48;
+  --c-sky-400:#38BDF8;--c-sky-500:#0EA5E9;--c-sky-600:#0284C7;
+  /* Type */
+  --font-sans:'Geist',ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --font-mono:'Geist Mono',ui-monospace,'SF Mono',monospace;
+  /* Spacing */
+  --sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:20px;--sp-6:24px;
+  --sp-8:32px;--sp-10:40px;--sp-12:48px;--sp-16:64px;
+  /* Radii */
+  --r-xs:4px;--r-sm:6px;--r-md:10px;--r-lg:14px;--r-xl:20px;--r-full:999px;
+  /* Motion */
+  --ease:cubic-bezier(.2,.8,.2,1);
+  --dur-1:120ms;--dur-2:180ms;--dur-3:240ms;
+  /* Type sizes */
+  --fs-11:11px;--fs-12:12px;--fs-13:13px;--fs-14:14px;--fs-15:15px;
+  --fs-17:17px;--fs-20:20px;--fs-24:24px;--fs-30:30px;--fs-36:36px;
+}
+[data-theme="dark"]{
+  --bg-0:#0A0A0F;--bg-1:#0F1016;--bg-2:#15161E;--bg-3:#1B1D28;--bg-4:#23242F;
+  --bg-hover:#1E2029;
+  --fg-0:#F4F5F7;--fg-1:#C8CBD4;--fg-2:#8B8FA1;--fg-3:#5C6072;--fg-4:#3A3D4B;
+  --line-1:rgba(255,255,255,.06);--line-2:rgba(255,255,255,.10);--line-3:rgba(255,255,255,.16);
+  --brand:var(--c-indigo-400);--brand-hi:var(--c-indigo-300);
+  --brand-lo:rgba(112,112,245,.14);--brand-line:rgba(112,112,245,.30);
+  --ok-bg:rgba(52,211,153,.10);--ok-fg:var(--c-emerald-400);--ok-line:rgba(52,211,153,.22);
+  --warn-bg:rgba(251,191,36,.10);--warn-fg:var(--c-amber-400);--warn-line:rgba(251,191,36,.22);
+  --err-bg:rgba(251,113,133,.10);--err-fg:var(--c-rose-400);--err-line:rgba(251,113,133,.22);
+  --info-bg:rgba(56,189,248,.10);--info-fg:var(--c-sky-400);--info-line:rgba(56,189,248,.22);
+  --shadow-1:0 1px 2px rgba(0,0,0,.4);
+  --shadow-2:0 4px 12px rgba(0,0,0,.35);
+  --shadow-3:0 12px 32px rgba(0,0,0,.5);
+  --shadow-glow:0 0 0 1px var(--brand-line),0 8px 24px rgba(91,91,247,.22);
+}
+[data-theme="light"]{
+  --bg-0:#FAFAF7;--bg-1:#FFFFFF;--bg-2:#F4F4F0;--bg-3:#EAEAE3;--bg-4:#E0E0D9;
+  --bg-hover:#F0F0EB;
+  --fg-0:#16161C;--fg-1:#3A3D47;--fg-2:#6B6E7B;--fg-3:#989BA9;--fg-4:#C7C9D2;
+  --line-1:rgba(20,20,30,.06);--line-2:rgba(20,20,30,.10);--line-3:rgba(20,20,30,.18);
+  --brand:var(--c-indigo-600);--brand-hi:var(--c-indigo-700);
+  --brand-lo:rgba(73,73,232,.10);--brand-line:rgba(73,73,232,.28);
+  --ok-bg:rgba(5,150,105,.10);--ok-fg:var(--c-emerald-600);--ok-line:rgba(5,150,105,.22);
+  --warn-bg:rgba(217,119,6,.10);--warn-fg:var(--c-amber-600);--warn-line:rgba(217,119,6,.22);
+  --err-bg:rgba(225,29,72,.09);--err-fg:var(--c-rose-600);--err-line:rgba(225,29,72,.22);
+  --info-bg:rgba(14,165,233,.09);--info-fg:var(--c-sky-600);--info-line:rgba(14,165,233,.22);
+  --shadow-1:0 1px 2px rgba(20,20,30,.06);
+  --shadow-2:0 4px 12px rgba(20,20,30,.08);
+  --shadow-3:0 12px 32px rgba(20,20,30,.12);
+  --shadow-glow:0 0 0 1px var(--brand-line),0 8px 24px rgba(73,73,232,.15);
+}
+html{color-scheme:dark light}
+[data-theme="light"] html{color-scheme:light}
+body{
+  font-family:var(--font-sans);font-size:var(--fs-14);line-height:1.5;
+  color:var(--fg-0);background:var(--bg-0);
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+  transition:background var(--dur-3) var(--ease),color var(--dur-3) var(--ease);
+  min-height:100vh;
+}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+input,select,textarea{font:inherit;color:inherit}
+code,.mono{font-family:var(--font-mono);font-feature-settings:"ss01"}
+::selection{background:var(--brand-lo);color:var(--fg-0)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:var(--r-full);border:2px solid var(--bg-0)}
+::-webkit-scrollbar-thumb:hover{background:var(--line-3)}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+
+/* ── Buttons ── */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  height:34px;padding:0 var(--sp-3);border-radius:var(--r-md);
+  font-size:var(--fs-13);font-weight:500;border:1px solid transparent;
+  transition:background var(--dur-1) var(--ease),border-color var(--dur-1) var(--ease),
+    color var(--dur-1) var(--ease),transform var(--dur-1) var(--ease);
+  white-space:nowrap;user-select:none;
+}
+.btn i{font-size:15px}
+.btn-primary{background:var(--brand);color:#fff;box-shadow:0 1px 0 rgba(255,255,255,.12) inset,var(--shadow-1)}
+.btn-primary:hover{background:var(--brand-hi)}
+.btn-primary:active{transform:translateY(1px)}
+.btn-secondary{background:var(--bg-2);color:var(--fg-0);border-color:var(--line-2)}
+.btn-secondary:hover{background:var(--bg-3);border-color:var(--line-3)}
+.btn-secondary:active{transform:translateY(1px)}
+.btn-ghost{background:transparent;color:var(--fg-1)}
+.btn-ghost:hover{background:var(--bg-hover);color:var(--fg-0)}
+.btn-outline{background:transparent;color:var(--fg-0);border-color:var(--line-2)}
+.btn-outline:hover{border-color:var(--line-3);background:var(--bg-hover)}
+.btn-danger{background:var(--err-bg);color:var(--err-fg);border-color:var(--err-line)}
+.btn-danger:hover{background:rgba(244,63,94,.16)}
+.btn-success{background:var(--ok-bg);color:var(--ok-fg);border-color:var(--ok-line)}
+.btn-success:hover{background:rgba(52,211,153,.16)}
+.btn-sm{height:28px;padding:0 10px;font-size:var(--fs-12);border-radius:var(--r-sm)}
+.btn-sm i{font-size:13px}
+.btn-lg{height:42px;padding:0 var(--sp-5);font-size:var(--fs-14);border-radius:var(--r-lg)}
+.btn-lg i{font-size:17px}
+.btn-icon{width:34px;padding:0}
+.btn-icon.btn-sm{width:28px}
+.btn:disabled,.btn[aria-disabled="true"]{opacity:.45;cursor:not-allowed;pointer-events:none}
+.btn.is-loading{pointer-events:none}
+.btn.is-loading::before{
+  content:'';width:12px;height:12px;border-radius:50%;
+  border:2px solid currentColor;border-right-color:transparent;
+  animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Inputs ── */
+.field{display:flex;flex-direction:column;gap:6px}
+.field-label{font-size:var(--fs-12);font-weight:500;color:var(--fg-1)}
+.field-help{font-size:var(--fs-11);color:var(--fg-3)}
+.field-error{font-size:var(--fs-11);color:var(--err-fg);display:flex;align-items:center;gap:4px}
+.input,.select,.textarea{
+  height:34px;padding:0 var(--sp-3);
+  background:var(--bg-2);border:1px solid var(--line-2);border-radius:var(--r-md);
+  color:var(--fg-0);font-size:var(--fs-13);width:100%;
+  transition:border-color var(--dur-1) var(--ease),box-shadow var(--dur-1) var(--ease),
+    background var(--dur-1) var(--ease);
+}
+.textarea{height:auto;padding:var(--sp-2) var(--sp-3);min-height:80px;resize:vertical}
+.input::placeholder,.textarea::placeholder{color:var(--fg-3)}
+.input:hover,.select:hover,.textarea:hover{border-color:var(--line-3)}
+.input:focus,.select:focus,.textarea:focus{
+  outline:none;border-color:var(--brand);
+  box-shadow:0 0 0 3px var(--brand-lo);background:var(--bg-1);
+}
+.input:disabled,.select:disabled{opacity:.5;cursor:not-allowed}
+.input[aria-invalid="true"]{border-color:var(--err-fg);box-shadow:0 0 0 3px var(--err-bg)}
+.input.is-mono{font-family:var(--font-mono);font-size:var(--fs-12)}
+.input-wrap{position:relative}
+.input-wrap .input{padding-right:34px}
+.input-wrap .trail{
+  position:absolute;right:4px;top:50%;transform:translateY(-50%);
+  width:26px;height:26px;display:flex;align-items:center;justify-content:center;
+  color:var(--fg-3);border-radius:var(--r-sm);
+  transition:color var(--dur-1) var(--ease),background var(--dur-1) var(--ease);
+}
+.input-wrap .trail:hover{color:var(--fg-1);background:var(--bg-hover)}
+.input-wrap .lead{
+  position:absolute;left:10px;top:50%;transform:translateY(-50%);
+  color:var(--fg-3);font-size:15px;pointer-events:none;
+}
+.input-wrap.has-lead .input{padding-left:32px}
+.select{
+  appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238B8FA1' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;padding-right:30px;
+}
+.search-wrap{position:relative}
+.search-wrap i{
+  position:absolute;left:10px;top:50%;transform:translateY(-50%);
+  color:var(--fg-3);font-size:14px;pointer-events:none;
+}
+.search-input{
+  height:34px;padding:0 var(--sp-3) 0 32px;
+  background:var(--bg-2);border:1px solid var(--line-2);border-radius:var(--r-md);
+  color:var(--fg-0);font-size:var(--fs-13);width:100%;
+  transition:border-color var(--dur-1) var(--ease),box-shadow var(--dur-1) var(--ease);
+}
+.search-input::placeholder{color:var(--fg-3)}
+.search-input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-lo)}
+
+/* ── Checkbox / radio / switch ── */
+.checkbox{display:inline-flex;align-items:center;gap:8px;cursor:pointer;user-select:none;font-size:var(--fs-13);color:var(--fg-0)}
+.checkbox input{position:absolute;opacity:0;pointer-events:none}
+.checkbox .box{
+  width:16px;height:16px;border-radius:var(--r-xs);
+  border:1.5px solid var(--line-3);background:var(--bg-2);
+  display:flex;align-items:center;justify-content:center;
+  transition:all var(--dur-1) var(--ease);flex-shrink:0;
+}
+.checkbox .box i{font-size:11px;color:#fff;opacity:0;transform:scale(.6);transition:all var(--dur-1) var(--ease)}
+.checkbox input:checked ~ .box{background:var(--brand);border-color:var(--brand)}
+.checkbox input:checked ~ .box i{opacity:1;transform:scale(1)}
+.radio{display:inline-flex;align-items:center;gap:8px;cursor:pointer;user-select:none;font-size:var(--fs-13);color:var(--fg-0)}
+.radio input{position:absolute;opacity:0;pointer-events:none}
+.radio .dot{
+  width:16px;height:16px;border-radius:50%;
+  border:1.5px solid var(--line-3);background:var(--bg-2);
+  display:flex;align-items:center;justify-content:center;
+  transition:all var(--dur-1) var(--ease);flex-shrink:0;
+}
+.radio .dot::after{
+  content:'';width:6px;height:6px;border-radius:50%;background:#fff;
+  opacity:0;transform:scale(.5);transition:all var(--dur-1) var(--ease);
+}
+.radio input:checked ~ .dot{background:var(--brand);border-color:var(--brand)}
+.radio input:checked ~ .dot::after{opacity:1;transform:scale(1)}
+.switch{display:inline-flex;align-items:center;gap:8px;cursor:pointer;user-select:none;font-size:var(--fs-13);color:var(--fg-0)}
+.switch input{position:absolute;opacity:0;pointer-events:none}
+.switch .track{
+  width:32px;height:18px;border-radius:var(--r-full);
+  background:var(--bg-3);border:1px solid var(--line-2);
+  position:relative;transition:all var(--dur-2) var(--ease);flex-shrink:0;
+}
+.switch .track::after{
+  content:'';position:absolute;top:1px;left:1px;
+  width:14px;height:14px;border-radius:50%;background:#fff;
+  box-shadow:var(--shadow-1);transition:all var(--dur-2) var(--ease);
+}
+.switch input:checked ~ .track{background:var(--brand);border-color:var(--brand)}
+.switch input:checked ~ .track::after{left:15px}
+
+/* ── Chips / badges / dots ── */
+.chip{
+  display:inline-flex;align-items:center;gap:4px;
+  height:26px;padding:0 10px;border-radius:var(--r-full);
+  background:var(--bg-2);border:1px solid var(--line-2);
+  font-size:var(--fs-12);font-weight:500;color:var(--fg-1);
+  transition:all var(--dur-1) var(--ease);cursor:pointer;white-space:nowrap;
+}
+.chip:hover{background:var(--bg-3);color:var(--fg-0)}
+.chip.is-active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.chip i{font-size:12px}
+.chip-sm{height:22px;padding:0 8px;font-size:11px}
+.chip-sm i{font-size:11px}
+.badge{
+  display:inline-flex;align-items:center;gap:4px;
+  height:22px;padding:0 8px;border-radius:var(--r-sm);
+  font-size:var(--fs-11);font-weight:600;font-family:var(--font-mono);
+  white-space:nowrap;
+}
+.badge.brand{background:var(--brand-lo);color:var(--brand)}
+.badge.ok{background:var(--ok-bg);color:var(--ok-fg)}
+.badge.warn{background:var(--warn-bg);color:var(--warn-fg)}
+.badge.err{background:var(--err-bg);color:var(--err-fg)}
+.badge.info{background:var(--info-bg);color:var(--info-fg)}
+.badge.neutral{background:var(--bg-3);color:var(--fg-1)}
+.dot{width:6px;height:6px;border-radius:2px;display:inline-block;flex-shrink:0}
+.dot.ok{background:var(--ok-fg);box-shadow:0 0 0 2px var(--ok-bg)}
+.dot.warn{background:var(--warn-fg);box-shadow:0 0 0 2px var(--warn-bg)}
+.dot.err{background:var(--err-fg);box-shadow:0 0 0 2px var(--err-bg)}
+.dot.info{background:var(--info-fg);box-shadow:0 0 0 2px var(--info-bg)}
+.dot.muted{background:var(--fg-4);box-shadow:0 0 0 2px var(--line-1)}
+.dot.live::after{content:'';display:block;width:6px;height:6px;border-radius:2px;background:inherit;animation:live 2s ease-in-out infinite}
+@keyframes live{0%,100%{opacity:0;transform:scale(1)}50%{opacity:.8;transform:scale(2.2)}}
+.status-pill{
+  display:inline-flex;align-items:center;gap:5px;
+  height:22px;padding:0 8px;border-radius:var(--r-sm);
+  font-size:var(--fs-11);font-weight:600;
+}
+.status-pill.online{background:var(--ok-bg);color:var(--ok-fg)}
+.status-pill.offline{background:var(--err-bg);color:var(--err-fg)}
+.status-pill.warn{background:var(--warn-bg);color:var(--warn-fg)}
+
+/* ── Tabs / segmented ── */
+.tabs{display:flex;gap:var(--sp-1);border-bottom:1px solid var(--line-1)}
+.tab{
+  padding:var(--sp-2) var(--sp-3);font-size:var(--fs-13);font-weight:500;
+  color:var(--fg-2);border-bottom:2px solid transparent;margin-bottom:-1px;
+  transition:color var(--dur-1) var(--ease),border-color var(--dur-1) var(--ease);
+}
+.tab:hover{color:var(--fg-0)}
+.tab.is-active{color:var(--fg-0);border-bottom-color:var(--brand)}
+.segmented{
+  display:inline-flex;padding:3px;gap:2px;
+  background:var(--bg-2);border:1px solid var(--line-2);border-radius:var(--r-md);
+}
+.segmented button{
+  padding:4px 12px;border-radius:var(--r-sm);font-size:var(--fs-12);font-weight:500;
+  color:var(--fg-2);transition:all var(--dur-1) var(--ease);
+}
+.segmented button:hover{color:var(--fg-0)}
+.segmented button.is-active{background:var(--bg-4);color:var(--fg-0);box-shadow:var(--shadow-1)}
+
+/* ── Card / metric ── */
+.card{
+  background:var(--bg-1);border:1px solid var(--line-1);
+  border-radius:var(--r-lg);padding:var(--sp-5);
+  transition:border-color var(--dur-2) var(--ease),background var(--dur-2) var(--ease);
+}
+.metric-card{
+  background:var(--bg-1);border:1px solid var(--line-1);
+  border-radius:var(--r-lg);padding:var(--sp-5);
+  display:flex;flex-direction:column;gap:var(--sp-2);
+  position:relative;overflow:hidden;
+}
+.metric-card .label{font-size:var(--fs-12);color:var(--fg-2);font-weight:500;display:flex;align-items:center;gap:6px}
+.metric-card .label i{font-size:14px;color:var(--fg-3)}
+.metric-card .value{font-size:var(--fs-30);font-weight:600;letter-spacing:-.02em;line-height:1.1}
+.metric-card .value .unit{font-size:var(--fs-13);color:var(--fg-2);font-weight:500;margin-left:4px}
+.metric-card .meta{font-size:var(--fs-12);color:var(--fg-2);display:flex;align-items:center;gap:6px}
+.metric-card .rail{position:absolute;top:0;left:0;width:2px;height:100%;background:var(--brand);opacity:.8}
+.metric-card.rail-ok .rail{background:var(--ok-fg)}
+.metric-card.rail-warn .rail{background:var(--warn-fg)}
+.metric-card.rail-err .rail{background:var(--err-fg)}
+
+/* ── Progress ── */
+.progress{height:5px;background:var(--bg-3);border-radius:var(--r-full);overflow:hidden;position:relative}
+.progress .fill{height:100%;background:var(--brand);border-radius:var(--r-full);transition:width var(--dur-3) var(--ease)}
+.progress .fill.ok{background:var(--ok-fg)}
+.progress .fill.warn{background:var(--warn-fg)}
+.progress .fill.err{background:var(--err-fg)}
+.progress-meta{display:flex;justify-content:space-between;font-size:var(--fs-11);color:var(--fg-2);margin-top:6px}
+
+/* ── Config card (ticket signature) ── */
+.config-card{
+  background:var(--bg-1);border:1px solid var(--line-1);border-radius:var(--r-lg);
+  overflow:hidden;position:relative;
+  transition:border-color var(--dur-2) var(--ease),box-shadow var(--dur-2) var(--ease);
+}
+.config-card:hover{border-color:var(--line-2);box-shadow:var(--shadow-2)}
+.config-card::before{
+  content:'';position:absolute;top:0;left:0;bottom:0;width:3px;
+  background:var(--ok-fg);opacity:.9;
+}
+.config-card.is-inactive::before{background:var(--fg-4);opacity:.5}
+.config-card.is-expired::before{background:var(--warn-fg);opacity:.7}
+.config-body{padding:var(--sp-4) var(--sp-5)}
+.config-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-3);margin-bottom:var(--sp-3)}
+.config-name{font-size:var(--fs-15);font-weight:600;color:var(--fg-0);letter-spacing:-.01em}
+.config-uuid{
+  font-family:var(--font-mono);font-size:var(--fs-11);color:var(--fg-2);
+  margin-top:3px;cursor:pointer;transition:color var(--dur-1) var(--ease);
+}
+.config-uuid:hover{color:var(--brand)}
+.config-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:var(--sp-2)}
+.config-tear{
+  height:1px;position:relative;
+  background:repeating-linear-gradient(90deg,var(--line-2) 0 4px,transparent 4px 8px);
+  margin:0 var(--sp-4);
+}
+.config-tear::before,.config-tear::after{
+  content:'';position:absolute;top:50%;width:12px;height:12px;border-radius:50%;
+  background:var(--bg-0);border:1px solid var(--line-1);transform:translateY(-50%);
+}
+.config-tear::before{left:-7px}
+.config-tear::after{right:-7px}
+.config-foot{
+  padding:var(--sp-3) var(--sp-5);
+  display:flex;align-items:center;justify-content:space-between;
+  gap:var(--sp-3);flex-wrap:wrap;
+}
+.config-foot .meta{
+  font-family:var(--font-mono);font-size:var(--fs-11);color:var(--fg-2);
+  display:flex;align-items:center;gap:var(--sp-3);
+}
+.config-foot .meta i{font-size:12px;opacity:.7}
+.config-actions{display:flex;gap:4px}
+
+/* ── Group card ── */
+.group-card{
+  background:var(--bg-1);border:1px solid var(--line-1);border-radius:var(--r-lg);
+  padding:var(--sp-5);display:flex;flex-direction:column;gap:var(--sp-3);
+  transition:border-color var(--dur-2) var(--ease);
+}
+.group-card:hover{border-color:var(--line-2)}
+.group-head{display:flex;align-items:flex-start;gap:var(--sp-3)}
+.group-icon{
+  width:36px;height:36px;border-radius:var(--r-md);
+  background:var(--brand-lo);color:var(--brand);
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;flex-shrink:0;
+}
+.group-name{font-weight:600;font-size:var(--fs-14)}
+.group-desc{font-size:var(--fs-12);color:var(--fg-2);margin-top:2px}
+.group-stats{display:flex;gap:var(--sp-4);padding-top:var(--sp-3);border-top:1px solid var(--line-1)}
+.group-stat .v{font-size:var(--fs-15);font-weight:600;font-family:var(--font-mono)}
+.group-stat .l{font-size:var(--fs-11);color:var(--fg-2)}
+.group-url{
+  font-family:var(--font-mono);font-size:var(--fs-11);color:var(--fg-2);
+  background:var(--bg-2);padding:8px 10px;border-radius:var(--r-sm);
+  border:1px solid var(--line-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+
+/* ── Connection card ── */
+.conn-card{background:var(--bg-1);border:1px solid var(--line-1);border-radius:var(--r-lg);padding:var(--sp-4) var(--sp-5)}
+.conn-head{display:flex;align-items:center;gap:var(--sp-3)}
+.conn-avatar{
+  width:34px;height:34px;border-radius:var(--r-md);
+  background:var(--ok-bg);color:var(--ok-fg);
+  display:flex;align-items:center;justify-content:center;
+  font-size:15px;flex-shrink:0;
+}
+.conn-ip{font-family:var(--font-mono);font-size:var(--fs-13);font-weight:600}
+.conn-label{font-size:var(--fs-11);color:var(--fg-2);margin-top:2px}
+.conn-body{
+  display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3);
+  margin-top:var(--sp-3);padding-top:var(--sp-3);border-top:1px solid var(--line-1);
+}
+.conn-stat .l{font-size:var(--fs-11);color:var(--fg-2);text-transform:uppercase;letter-spacing:.04em}
+.conn-stat .v{font-family:var(--font-mono);font-size:var(--fs-13);font-weight:500;margin-top:2px}
+
+/* ── List row ── */
+.list-row{
+  display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3);
+  border-radius:var(--r-md);transition:background var(--dur-1) var(--ease);cursor:pointer;
+}
+.list-row:hover{background:var(--bg-hover)}
+.list-row .ico{
+  width:30px;height:30px;border-radius:var(--r-sm);
+  background:var(--bg-3);color:var(--fg-1);
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;flex-shrink:0;
+}
+.list-row .txt{flex:1;min-width:0}
+.list-row .ttl{font-size:var(--fs-13);font-weight:500}
+.list-row .sub{font-size:var(--fs-11);color:var(--fg-2);margin-top:1px}
+.list-row .trail{color:var(--fg-3);font-size:14px}
+
+/* ── Empty / skeleton ── */
+.empty{
+  padding:var(--sp-8) var(--sp-5);text-align:center;
+  border:1px dashed var(--line-2);border-radius:var(--r-lg);background:var(--bg-1);
+}
+.empty .ic{
+  width:40px;height:40px;margin:0 auto var(--sp-3);
+  background:var(--bg-3);color:var(--fg-2);border-radius:var(--r-md);
+  display:flex;align-items:center;justify-content:center;font-size:18px;
+}
+.empty .ttl{font-size:var(--fs-14);font-weight:500;margin-bottom:4px}
+.empty .sub{font-size:var(--fs-12);color:var(--fg-2)}
+.skeleton{
+  background:linear-gradient(90deg,var(--bg-2) 0%,var(--bg-3) 50%,var(--bg-2) 100%);
+  background-size:200% 100%;animation:skeleton 1.4s ease-in-out infinite;
+  border-radius:var(--r-sm);display:block;
+}
+@keyframes skeleton{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ── Modal ── */
+.modal-backdrop{
+  position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(3px);
+  display:none;align-items:center;justify-content:center;padding:var(--sp-4);z-index:500;
+}
+.modal-backdrop.open{display:flex}
+.modal{
+  background:var(--bg-1);border:1px solid var(--line-2);border-radius:var(--r-xl);
+  box-shadow:var(--shadow-3);width:100%;max-width:440px;overflow:hidden;
+  animation:modalIn var(--dur-2) var(--ease);
+}
+@keyframes modalIn{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:var(--sp-5) var(--sp-5) var(--sp-3)}
+.modal-title{font-size:var(--fs-17);font-weight:600;letter-spacing:-.01em}
+.modal-sub{font-size:var(--fs-12);color:var(--fg-2);margin-top:3px}
+.modal-body{padding:0 var(--sp-5) var(--sp-5);display:flex;flex-direction:column;gap:var(--sp-4)}
+.modal-foot{padding:var(--sp-3) var(--sp-5) var(--sp-5);display:flex;gap:8px;justify-content:flex-end}
+.modal-close{color:var(--fg-2);width:26px;height:26px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center}
+.modal-close:hover{background:var(--bg-hover);color:var(--fg-0)}
+
+/* ── Toast ── */
+.toast-host{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  display:flex;flex-direction:column;gap:8px;z-index:900;pointer-events:none;
+  max-width:calc(100vw - 32px);
+}
+.toast{
+  display:flex;align-items:flex-start;gap:10px;padding:12px 14px;
+  background:var(--bg-2);border:1px solid var(--line-2);border-radius:var(--r-md);
+  box-shadow:var(--shadow-2);font-size:var(--fs-13);pointer-events:auto;
+  animation:toastIn var(--dur-2) var(--ease);
+  max-width:380px;
+}
+.toast.out{animation:toastOut var(--dur-2) var(--ease) forwards}
+@keyframes toastIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes toastOut{to{opacity:0;transform:translateY(12px)}}
+.toast .ic{
+  width:18px;height:18px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:12px;margin-top:1px;
+}
+.toast .body{flex:1}
+.toast .ttl{font-weight:500}
+.toast .msg{font-size:var(--fs-12);color:var(--fg-2);margin-top:2px}
+.toast.ok{border-color:var(--ok-line)}
+.toast.ok .ic{background:var(--ok-bg);color:var(--ok-fg)}
+.toast.err{border-color:var(--err-line)}
+.toast.err .ic{background:var(--err-bg);color:var(--err-fg)}
+.toast.warn{border-color:var(--warn-line)}
+.toast.warn .ic{background:var(--warn-bg);color:var(--warn-fg)}
+.toast.info{border-color:var(--info-line)}
+.toast.info .ic{background:var(--info-bg);color:var(--info-fg)}
+
+/* ── QR modal ── */
+.qr-box{display:flex;flex-direction:column;align-items:center;gap:var(--sp-3)}
+.qr-canvas{
+  width:220px;height:220px;background:#fff;border-radius:var(--r-md);
+  padding:10px;box-shadow:var(--shadow-2);
+}
+.qr-canvas img{width:100%;height:100%;display:block}
+
+/* ── Theme toggle ── */
+.theme-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 12px;border-radius:var(--r-full);
+  background:var(--bg-2);border:1px solid var(--line-2);
+  color:var(--fg-1);font-size:var(--fs-12);font-weight:500;
+  transition:all var(--dur-2) var(--ease);
+}
+.theme-btn:hover{color:var(--fg-0);border-color:var(--line-3)}
+.theme-btn i{font-size:14px}
+
+@keyframes spin360{to{transform:rotate(360deg)}}
+"""
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# LOGIN PAGE
+# ══════════════════════════════════════════════════════════════════════════════
 LOGIN_HTML = r"""<!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="en" data-theme="dark">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="dark light">
-<title>Sign in · Lumen Gate</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%232dd4bf%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%232563c9%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%229%22%20fill%3D%22url%28%23g%29%22/%3E%3Cpath%20d%3D%22M6%2017h5l3-8%204%2014%203-6h5%22%20fill%3D%22none%22%20stroke%3D%22%2304201c%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E">
-<script>try{document.documentElement.setAttribute('data-theme',localStorage.getItem('gateway-theme')==='light'?'light':'dark')}catch(e){}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign in · Gateway</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-:root{color-scheme:dark;--bg:#080f17;--card:#0f1923;--bg3:#15212d;--bd:#233443;--t1:#e8eff5;--t2:#9db0c0;--t3:#6b8093;--accent:#2dd4bf;--accent2:#5eead4;--accent-d:rgba(45,212,191,.12);--on-accent:#04201c;--purple:#7aa7f5;--red:#f87171;--red-bg:rgba(248,113,113,.12);--field:rgba(0,0,0,.22);--ring:0 0 0 3px rgba(45,212,191,.32);--shadow:0 28px 70px -14px rgba(0,0,0,.8);--font:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
-[data-theme="light"]{color-scheme:light;--bg:#f2f5f7;--card:#ffffff;--bg3:#e9eef2;--bd:#dbe2e9;--t1:#0b1620;--t2:#4b5b6a;--t3:#7a8896;--accent:#0b8f84;--accent2:#097a71;--accent-d:#dcf3f0;--on-accent:#ffffff;--purple:#2563c9;--red:#b92f2f;--red-bg:#fbe3e3;--field:#f6f8fa;--ring:0 0 0 3px rgba(11,143,132,.3);--shadow:0 28px 70px -14px rgba(11,22,32,.3)}
-html,body{min-height:100%}
-body{font-family:var(--font);background:radial-gradient(60% 45% at 50% -5%,var(--accent-d),transparent 70%),var(--bg);color:var(--t1);display:grid;place-items:center;padding:calc(20px + env(safe-area-inset-top,0px)) 20px calc(20px + env(safe-area-inset-bottom,0px));font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
-button,input{font:inherit;color:inherit}
-:focus-visible{outline:none;box-shadow:var(--ring)}
-.wrap{width:100%;max-width:400px}
-.card{background:var(--card);border:1px solid var(--bd);border-radius:22px;padding:34px 30px 30px;box-shadow:var(--shadow);animation:rise .4s cubic-bezier(.2,.8,.2,1)}
-@keyframes rise{from{opacity:0;transform:translateY(10px)}}
-.brand{display:flex;align-items:center;gap:12px;margin-bottom:26px}
-.brand-img svg{width:40px;height:40px;display:block}
-.brand-name{font-size:16px;font-weight:650;letter-spacing:-.01em}
-.brand-sub{font-size:12px;color:var(--t3)}
-h1{font-size:26px;font-weight:700;letter-spacing:-.03em;line-height:1.15}
-.sub{color:var(--t2);margin:8px 0 22px}
-.err{display:none;align-items:center;gap:8px;padding:10px 12px;margin-bottom:14px;border-radius:12px;background:var(--red-bg);color:var(--red);font-size:13px}
-.err.show{display:flex}
-.hint{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;margin-bottom:18px;border:1px dashed var(--bd);border-radius:12px;font-size:12.5px;color:var(--t3)}
-.hint-val{font-family:var(--mono);color:var(--accent2);background:var(--accent-d);padding:2px 10px;border-radius:99px;cursor:pointer}
-.field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
-.field label{font-size:13px;font-weight:600;color:var(--t2)}
-.inp-wrap{position:relative}
-.inp-wrap input{width:100%;height:44px;padding:0 44px;border-radius:12px;border:1px solid var(--bd);background:var(--field);font-size:15px;outline:none;transition:border-color .15s,box-shadow .15s}
-.inp-wrap input:focus{border-color:var(--accent);box-shadow:var(--ring)}
-.inp-wrap .ic{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--t3);font-size:17px;pointer-events:none}
-.eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:none;border:0;border-radius:8px;color:var(--t3);font-size:17px;cursor:pointer}
-.eye:hover{color:var(--t1);background:var(--bg3)}
-.btn{width:100%;height:46px;display:flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:12px;background:var(--accent);color:var(--on-accent);font-size:15px;font-weight:650;cursor:pointer;transition:filter .15s,transform .12s}
-.btn:hover{filter:brightness(1.1)}.btn:active{transform:scale(.98)}.btn:disabled{opacity:.6;cursor:wait}
-@keyframes spin{to{transform:rotate(360deg)}}
-@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+__COMMON_CSS__
+body{
+  display:flex;align-items:center;justify-content:center;padding:20px;
+  background:
+    radial-gradient(ellipse 600px 300px at 20% 0%,var(--brand-lo),transparent 60%),
+    radial-gradient(ellipse 500px 260px at 100% 100%,rgba(255,107,74,.06),transparent 60%),
+    var(--bg-0);
+}
+.login-card{
+  width:100%;max-width:400px;
+  background:var(--bg-1);border:1px solid var(--line-2);border-radius:var(--r-xl);
+  padding:var(--sp-8) var(--sp-6) var(--sp-6);
+  box-shadow:var(--shadow-3);
+}
+.login-brand{display:flex;align-items:center;gap:10px;margin-bottom:var(--sp-6)}
+.brand-mark{
+  width:36px;height:36px;border-radius:var(--r-md);
+  background:linear-gradient(135deg,var(--brand),var(--c-coral-500));
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font-family:var(--font-mono);font-weight:700;font-size:16px;
+}
+.brand-txt{font-weight:600;font-size:var(--fs-14);letter-spacing:-.01em}
+.brand-ver{font-family:var(--font-mono);font-size:var(--fs-11);color:var(--fg-2);margin-top:1px}
+.login-title{font-size:var(--fs-20);font-weight:700;letter-spacing:-.02em;margin-bottom:6px}
+.login-sub{font-size:var(--fs-13);color:var(--fg-2);margin-bottom:var(--sp-5);line-height:1.5}
+.login-form{display:flex;flex-direction:column;gap:var(--sp-4)}
+.login-form .btn-primary{height:42px;font-size:var(--fs-14);border-radius:var(--r-lg)}
+.login-hint{
+  margin-top:var(--sp-5);padding-top:var(--sp-4);
+  border-top:1px solid var(--line-1);
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:var(--fs-11);color:var(--fg-3);font-family:var(--font-mono);
+}
+.login-hint code{
+  background:var(--bg-2);border:1px solid var(--line-1);
+  padding:2px 8px;border-radius:var(--r-xs);color:var(--fg-1);
+}
+.login-err{
+  display:none;padding:10px 12px;
+  background:var(--err-bg);border:1px solid var(--err-line);
+  border-radius:var(--r-md);color:var(--err-fg);font-size:var(--fs-12);
+  align-items:center;gap:6px;
+}
+.login-err.show{display:flex}
+.login-theme{position:fixed;top:20px;right:20px}
+@media(max-width:420px){
+  .login-theme{top:12px;right:12px}
+  .login-card{padding:var(--sp-6) var(--sp-5) var(--sp-5)}
+}
 </style>
 </head>
 <body>
-<main class="wrap">
-  <div class="card">
-    <div class="brand">
-      <div class="brand-img"><svg viewBox="0 0 32 32" role="img" aria-label="Lumen Gate"><defs><linearGradient id="lgL" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--accent)"/><stop offset="1" style="stop-color:var(--purple)"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="url(#lgL)"/><path d="M6 17h5l3-8 4 14 3-6h5" fill="none" stroke="var(--on-accent)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-      <div><div class="brand-name">Lumen Gate</div><div class="brand-sub">v11</div></div>
+<button class="theme-btn login-theme" onclick="toggleTheme()" aria-label="Toggle theme">
+  <i class="ti ti-sun" id="theme-icon"></i>
+  <span id="theme-label">Light</span>
+</button>
+
+<div class="login-card">
+  <div class="login-brand">
+    <div class="brand-mark">G</div>
+    <div>
+      <div class="brand-txt">Gateway</div>
+      <div class="brand-ver">v12 · admin panel</div>
     </div>
-    <h1>Sign in</h1>
-    <p class="sub">Enter your password to access the dashboard.</p>
-    <div class="err" id="err" role="alert"><i class="ti ti-alert-circle"></i><span id="err-text"></span></div>
-    <div class="hint">
-      <span class="hint-label">Default password</span>
-      <span class="hint-val" role="button" tabindex="0" onclick="document.getElementById('pw').value='admin';document.getElementById('pw').focus()">admin</span>
-    </div>
-    <form id="form">
-      <div class="field">
-        <label for="pw">Password</label>
-        <div class="inp-wrap">
-          <input type="password" id="pw" placeholder="Enter your password" autocomplete="current-password" autofocus required>
-          <i class="ti ti-lock ic" aria-hidden="true"></i>
-          <button type="button" class="eye" id="pw-eye" aria-label="Show password"><i class="ti ti-eye"></i></button>
-        </div>
-      </div>
-      <button class="btn" type="submit" id="btn"><i class="ti ti-login-2"></i> Open dashboard</button>
-    </form>
-    <div class="footer"></div>
   </div>
-</main>
+  <div class="login-title">Sign in</div>
+  <div class="login-sub">Enter the admin password to access the dashboard.</div>
+
+  <form class="login-form" id="form" autocomplete="on">
+    <div class="login-err" id="err"><i class="ti ti-alert-circle"></i><span id="err-text"></span></div>
+    <div class="field">
+      <label class="field-label" for="pw">Password</label>
+      <div class="input-wrap">
+        <input class="input" id="pw" type="password" placeholder="••••••••" autocomplete="current-password" required autofocus>
+        <button class="trail" type="button" onclick="togglePw('pw', this)" aria-label="Show password"><i class="ti ti-eye"></i></button>
+      </div>
+    </div>
+    <button class="btn btn-primary" type="submit" id="submit-btn"><i class="ti ti-arrow-right"></i> Continue</button>
+  </form>
+
+  <div class="login-hint">
+    <span>default password</span>
+    <code onclick="document.getElementById('pw').value='admin';document.getElementById('pw').focus()">admin</code>
+  </div>
+</div>
+
 <script>
-document.getElementById('pw-eye').addEventListener('click',()=>{
-  const i=document.getElementById('pw'),b=document.getElementById('pw-eye'),show=i.type==='password';
-  i.type=show?'text':'password';
-  b.setAttribute('aria-label',show?'Hide password':'Show password');
-  b.firstElementChild.className='ti '+(show?'ti-eye-off':'ti-eye');
-});
-document.getElementById('form').addEventListener('submit',async e=>{
+/* Theme */
+(function(){
+  const saved = localStorage.getItem('gateway-theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  renderToggle(saved);
+})();
+function renderToggle(theme){
+  const icon = document.getElementById('theme-icon');
+  const label = document.getElementById('theme-label');
+  if (theme === 'dark') { icon.className = 'ti ti-sun'; label.textContent = 'Light'; }
+  else { icon.className = 'ti ti-moon'; label.textContent = 'Dark'; }
+}
+function toggleTheme(){
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('gateway-theme', next);
+  renderToggle(next);
+}
+function togglePw(id, btn){
+  const el = document.getElementById(id);
+  const show = el.type === 'password';
+  el.type = show ? 'text' : 'password';
+  btn.querySelector('i').className = show ? 'ti ti-eye-off' : 'ti ti-eye';
+  btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+}
+
+/* Login submit */
+document.getElementById('form').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const btn=document.getElementById('btn'),err=document.getElementById('err'),et=document.getElementById('err-text');
-  err.classList.remove('show');btn.disabled=true;
-  btn.innerHTML='<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Signing in...';
-  try{
-    const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:document.getElementById('pw').value})});
-    if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.detail||'Error');}
-    location.href='/dashboard';
-  }catch(e){
-    et.textContent=e.message;err.classList.add('show');
-    btn.disabled=false;btn.innerHTML='<i class="ti ti-login-2"></i> Open dashboard';
+  const btn = document.getElementById('submit-btn');
+  const err = document.getElementById('err');
+  const errText = document.getElementById('err-text');
+  err.classList.remove('show');
+  btn.disabled = true;
+  btn.classList.add('is-loading');
+  btn.innerHTML = 'Signing in…';
+  try {
+    const r = await fetch('/api/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({password: document.getElementById('pw').value}),
+    });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      throw new Error(d.detail || 'Invalid password');
+    }
+    location.href = '/dashboard';
+  } catch (e) {
+    errText.textContent = e.message;
+    err.classList.add('show');
+    btn.disabled = false;
+    btn.classList.remove('is-loading');
+    btn.innerHTML = '<i class="ti ti-arrow-right"></i> Continue';
   }
 });
 </script>
-</body></html>"""
+</body>
+</html>""".replace("__COMMON_CSS__", _COMMON_CSS)
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DASHBOARD
+# ══════════════════════════════════════════════════════════════════════════════
 DASHBOARD_HTML = r"""<!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="en" data-theme="dark">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="dark light">
-<title>Dashboard · Lumen Gate</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%232dd4bf%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%232563c9%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%229%22%20fill%3D%22url%28%23g%29%22/%3E%3Cpath%20d%3D%22M6%2017h5l3-8%204%2014%203-6h5%22%20fill%3D%22none%22%20stroke%3D%22%2304201c%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E">
-<script>try{document.documentElement.setAttribute('data-theme',localStorage.getItem('gateway-theme')==='light'?'light':'dark')}catch(e){}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gateway · Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
-/* ==========================================================================
-   Lumen Gate — dashboard design system
-   1. Tokens  2. Base  3. Shell  4. Primitives  5. Pages  6. Overlays  7. Responsive
-   ========================================================================== */
+__COMMON_CSS__
 
-/* 1. Tokens ---------------------------------------------------------------- */
-:root{
-  color-scheme:dark;
-  --bg:#080f17;--bg2:#0c1520;--bg3:#15212d;
-  --card:#0f1923;--card-b:#233443;--card-bh:#35506a;
-  --t1:#e8eff5;--t2:#9db0c0;--t3:#6b8093;
-  --accent:#2dd4bf;--accent2:#5eead4;--accent-d:rgba(45,212,191,.12);--on-accent:#04201c;
-  --green:#4ade80;--green-t:#4ade80;--green-bg:rgba(74,222,128,.12);
-  --red:#f87171;--red-t:#f87171;--red-bg:rgba(248,113,113,.12);
-  --amber:#fbbf24;--amber-t:#fbbf24;--amber-bg:rgba(251,191,36,.12);
-  --purple:#7aa7f5;--purple-bg:rgba(122,167,245,.13);
-  --shadow:0 8px 28px -10px rgba(0,0,0,.65);--shadow-lg:0 28px 70px -14px rgba(0,0,0,.8);
-  --ring:0 0 0 3px rgba(45,212,191,.32);--scrim:rgba(3,8,13,.66);--field:rgba(0,0,0,.22);
-  --font:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
-  --sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:24px;--sp-6:32px;
-  --r-sm:8px;--r-md:12px;--r-lg:18px;--radius:16px;--sidebar-w:244px;
-  --ease:cubic-bezier(.2,.8,.2,1);
+/* ── App layout ── */
+.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+.side{
+  position:sticky;top:0;align-self:start;height:100vh;
+  background:var(--bg-1);border-right:1px solid var(--line-1);
+  display:flex;flex-direction:column;padding:var(--sp-4) var(--sp-3);
+  overflow-y:auto;
 }
-[data-theme="light"]{
-  color-scheme:light;
-  --bg:#f2f5f7;--bg2:#ffffff;--bg3:#e9eef2;
-  --card:#ffffff;--card-b:#dbe2e9;--card-bh:#b7c4d1;
-  --t1:#0b1620;--t2:#4b5b6a;--t3:#7a8896;
-  --accent:#0b8f84;--accent2:#097a71;--accent-d:#dcf3f0;--on-accent:#ffffff;
-  --green:#138a55;--green-t:#0f7547;--green-bg:#dcf3e6;
-  --red:#d43b3b;--red-t:#b92f2f;--red-bg:#fbe3e3;
-  --amber:#b36a00;--amber-t:#935700;--amber-bg:#fbefd5;
-  --purple:#2563c9;--purple-bg:#e0eafb;
-  --shadow:0 8px 24px -10px rgba(11,22,32,.18);--shadow-lg:0 28px 70px -14px rgba(11,22,32,.3);
-  --ring:0 0 0 3px rgba(11,143,132,.3);--scrim:rgba(11,22,32,.45);--field:#f6f8fa;
+.side-brand{
+  display:flex;align-items:center;gap:var(--sp-2);
+  padding:var(--sp-2) var(--sp-2) var(--sp-4);
+  margin-bottom:var(--sp-3);
+  border-bottom:1px solid var(--line-1);
 }
+.brand-mark{
+  width:28px;height:28px;border-radius:var(--r-sm);
+  background:linear-gradient(135deg,var(--brand),var(--c-coral-500));
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font-family:var(--font-mono);font-weight:700;font-size:13px;
+  flex-shrink:0;
+}
+.brand-txt{font-weight:600;font-size:var(--fs-13);letter-spacing:-.01em}
+.brand-ver{font-family:var(--font-mono);font-size:10px;color:var(--fg-3);margin-left:auto}
+.side-sec{
+  font-size:10px;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--fg-3);font-weight:600;
+  padding:var(--sp-4) var(--sp-2) var(--sp-2);
+}
+.side-nav{display:flex;flex-direction:column;gap:2px}
+.side-item{
+  display:flex;align-items:center;gap:var(--sp-2);
+  padding:6px var(--sp-2);border-radius:var(--r-sm);
+  font-size:var(--fs-13);color:var(--fg-2);cursor:pointer;
+  transition:background var(--dur-1) var(--ease),color var(--dur-1) var(--ease);
+}
+.side-item i{font-size:15px;flex-shrink:0}
+.side-item:hover{background:var(--bg-hover);color:var(--fg-0)}
+.side-item.is-active{background:var(--brand-lo);color:var(--brand)}
+.side-item .count{
+  margin-left:auto;font-family:var(--font-mono);font-size:10px;
+  background:var(--bg-3);color:var(--fg-2);padding:1px 6px;border-radius:var(--r-xs);
+}
+.side-item.is-active .count{background:rgba(112,112,245,.2);color:var(--brand)}
+.side-foot{
+  margin-top:auto;display:flex;flex-direction:column;gap:6px;
+  padding-top:var(--sp-4);border-top:1px solid var(--line-1);
+}
+.side-foot .btn{justify-content:flex-start}
 
-/* 2. Base ------------------------------------------------------------------ */
-*{margin:0;padding:0;box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
-body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100vh;display:flex;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;transition:background .25s,color .25s}
-a{color:inherit;text-decoration:none}
-button,input,select,textarea{font:inherit;color:inherit}
-button{cursor:pointer}
-:focus-visible{outline:none;box-shadow:var(--ring)}
-::-webkit-scrollbar{width:8px;height:8px}
-::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:8px;border:2px solid transparent;background-clip:content-box}
-@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-@keyframes ring{0%{box-shadow:0 0 0 0 currentColor}70%,100%{box-shadow:0 0 0 7px transparent}}
-@keyframes shimmer{0%{transform:translateX(-120%)}100%{transform:translateX(280%)}}
-@keyframes spin{to{transform:rotate(360deg)}}
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+/* ── Mobile top bar ── */
+.mobile-bar{
+  display:none;position:sticky;top:0;z-index:100;
+  height:52px;background:var(--bg-1);
+  border-bottom:1px solid var(--line-1);
+  align-items:center;padding:0 var(--sp-4);gap:var(--sp-3);
+}
+.mobile-bar .brand-mark{width:24px;height:24px;font-size:11px}
+.mobile-bar .brand-txt{font-size:var(--fs-13)}
+.mobile-bar .spacer{flex:1}
+.mobile-bar .btn-icon{background:var(--bg-2);border:1px solid var(--line-2)}
 
-/* 3. Shell ----------------------------------------------------------------- */
-.sidebar{width:var(--sidebar-w);background:var(--bg2);border-right:1px solid var(--card-b);display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;z-index:200;transition:transform .25s var(--ease)}
-.logo{display:flex;align-items:center;gap:12px;padding:20px 18px 16px;border-bottom:1px solid var(--card-b)}
-.logo-img,.mob-logo{display:flex;flex-shrink:0}
-.logo-img svg{width:36px;height:36px}.mob-logo svg{width:28px;height:28px}
-.logo-name{font-size:15px;font-weight:650;letter-spacing:-.01em}
-.logo-sub{font-size:11px;color:var(--t3)}
-.sb-close{display:none;position:absolute;right:12px;top:18px;width:32px;height:32px;border-radius:var(--r-sm);background:var(--accent-d);border:0;color:var(--t2);font-size:16px;align-items:center;justify-content:center}
-.nav-wrap{flex:1;overflow-y:auto;padding:8px 10px}
-.nav-sec{padding:16px 10px 6px;font-size:11px;font-weight:600;color:var(--t3)}
-.nav-it{display:flex;align-items:center;gap:10px;padding:9px 12px;margin:1px 0;border-radius:var(--r-md);color:var(--t2);font-size:13.5px;cursor:pointer;transition:background .15s,color .15s}
-.nav-it i{font-size:18px;width:20px;text-align:center;flex-shrink:0}
-.nav-it:hover{background:var(--bg3);color:var(--t1)}
-.nav-it.on{background:var(--accent-d);color:var(--accent2);font-weight:600}
-.nav-badge{margin-left:auto;background:var(--accent-d);color:var(--accent2);font-size:11px;padding:1px 8px;border-radius:99px;font-weight:600}
-.sb-foot{padding:12px;border-top:1px solid var(--card-b);display:flex;flex-direction:column;gap:8px}
-.tg-btn,.theme-btn,.logout-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:36px;border-radius:var(--r-md);font-size:13px;font-weight:550;border:1px solid var(--card-b);background:transparent;color:var(--t2);transition:background .15s,color .15s,transform .12s}
-.tg-btn{background:var(--accent);color:var(--on-accent);border-color:transparent}
-.tg-btn:hover{filter:brightness(1.08)}
-.theme-btn:hover{background:var(--bg3);color:var(--t1)}
-.logout-btn{color:var(--red-t);border-color:transparent;background:var(--red-bg)}
-.logout-btn:hover{filter:brightness(1.12)}
-.tg-btn:active,.theme-btn:active,.logout-btn:active{transform:scale(.98)}
-.mob-top{display:none;position:fixed;top:0;left:0;right:0;height:56px;padding:env(safe-area-inset-top,0) 14px 0;background:color-mix(in srgb,var(--bg2) 88%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--card-b);z-index:150;align-items:center;justify-content:space-between}
-.mob-top .ml{display:flex;align-items:center;gap:10px}
-.mob-title{font-size:14px;font-weight:650}
-.mob-right{display:flex;gap:6px}
-.menu-btn,.theme-mob{width:36px;height:36px;border-radius:var(--r-sm);background:var(--bg3);border:0;color:var(--t2);font-size:18px;display:flex;align-items:center;justify-content:center}
-.overlay{display:none;position:fixed;inset:0;background:var(--scrim);z-index:190;backdrop-filter:blur(3px)}
-.overlay.show{display:block}
-.main{margin-left:var(--sidebar-w);flex:1;padding:32px 32px 64px;min-width:0;max-width:1400px}
-.pg{display:none}
-.pg.on{display:block;animation:fi .22s var(--ease)}
-.topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:24px}
-.tb-title{font-size:22px;font-weight:700;letter-spacing:-.02em;display:flex;align-items:center;gap:10px}
-.tb-title i{color:var(--accent);font-size:22px}
-.tb-sub{font-size:13px;color:var(--t3);margin-top:4px}
-.tb-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.ml-auto{margin-left:auto}
-.mb16{margin-bottom:16px}
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
-.g3{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px}
+/* ── Main ── */
+.main{padding:var(--sp-6) var(--sp-8);max-width:1400px;width:100%}
+.page{display:none}
+.page.on{display:block;animation:pageIn var(--dur-2) var(--ease)}
+@keyframes pageIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.page-top{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  gap:var(--sp-4);margin-bottom:var(--sp-5);flex-wrap:wrap;
+}
+.page-title{font-size:var(--fs-20);font-weight:600;letter-spacing:-.02em}
+.page-sub{font-size:var(--fs-12);color:var(--fg-2);margin-top:3px}
+.page-top-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 
-/* 4. Primitives ------------------------------------------------------------ */
-.badge,.exp-chip,.proto-chip,.conn-status-pill{display:inline-flex;align-items:center;gap:6px;font-weight:600;white-space:nowrap;border-radius:99px}
-.badge{font-size:12px;padding:3px 10px}
-.exp-chip{font-size:11px;padding:2px 9px}
-.proto-chip{font-size:11px;padding:2px 9px;border-radius:7px}
-.bg-green,.ec-ok,.pc-ultra{background:var(--green-bg);color:var(--green-t)}
-.bg-blue,.ec-inf,.pc-ws{background:var(--accent-d);color:var(--accent2)}
-.bg-amber,.ec-warn{background:var(--amber-bg);color:var(--amber-t)}
-.bg-red,.ec-exp{background:var(--red-bg);color:var(--red-t)}
-.bg-purple,.pc-xhttp{background:var(--purple-bg);color:var(--purple)}
-.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;display:inline-block}
-.dg{background:var(--green);color:var(--green)}.dr{background:var(--red);color:var(--red)}.da{background:var(--amber);color:var(--amber)}.db{background:var(--accent);color:var(--accent)}
-.pulse{animation:ring 2s infinite}
+/* Grids */
+.grid{display:grid;gap:var(--sp-3)}
+.grid-4{grid-template-columns:repeat(4,1fr)}
+.grid-3-1{grid-template-columns:3fr 1fr}
+.grid-2{grid-template-columns:repeat(2,1fr)}
+.grid-auto{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
 
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 14px;border-radius:var(--r-md);border:1px solid transparent;font-size:13px;font-weight:550;white-space:nowrap;transition:background .15s,border-color .15s,transform .12s,filter .15s}
-.btn i{font-size:15px}
-.btn:active{transform:scale(.97)}
-.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
-.btn-p{background:var(--accent);color:var(--on-accent)}.btn-p:hover{filter:brightness(1.1)}
-.btn-o{background:transparent;border-color:var(--card-b);color:var(--t2)}.btn-o:hover{background:var(--bg3);color:var(--t1)}
-.btn-g{background:var(--accent-d);color:var(--accent2)}.btn-g:hover{filter:brightness(1.15)}
-.btn-d{background:var(--red-bg);color:var(--red-t)}.btn-d:hover{filter:brightness(1.15)}
-.btn-pur{background:var(--purple-bg);color:var(--purple)}.btn-pur:hover{filter:brightness(1.15)}
-.btn-amber{background:var(--amber-bg);color:var(--amber-t)}.btn-amber:hover{filter:brightness(1.15)}
-.btn-sm{height:28px;padding:0 10px;font-size:12px;border-radius:var(--r-sm)}
-.btn-icon{width:30px;height:30px;padding:0;border-radius:var(--r-sm)}
+/* Chart wrapper */
+.chart-wrap{position:relative;height:240px;margin-top:var(--sp-3)}
+.chart-wrap.tall{height:300px}
 
-.card{background:var(--card);border:1px solid var(--card-b);border-radius:var(--radius);padding:20px;transition:border-color .2s}
-.card:hover{border-color:var(--card-bh)}
-.card-title{font-size:14px;font-weight:650;margin-bottom:16px;display:flex;align-items:center;gap:8px}
-.card-title i{font-size:18px;color:var(--accent)}
-.sr{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--card-b);font-size:13px}
-.sr:last-child{border-bottom:0}
-.sr-k{color:var(--t2);display:flex;align-items:center;gap:8px}
-.sr-k i{font-size:15px;color:var(--t3)}
-.sr-v{font-weight:600;text-align:right}
-.ch{position:relative;height:240px}.ch-lg{position:relative;height:330px}.ch-sm{position:relative;height:190px}
+/* Overview default link */
+.default-link-card{
+  background:linear-gradient(135deg,var(--bg-2),var(--bg-1));
+  border:1px solid var(--line-1);border-radius:var(--r-lg);
+  padding:var(--sp-5);margin-bottom:var(--sp-4);
+}
+.default-link-label{
+  font-size:var(--fs-11);text-transform:uppercase;letter-spacing:.06em;
+  color:var(--fg-2);font-weight:600;margin-bottom:var(--sp-2);
+  display:flex;align-items:center;gap:6px;
+}
+.default-link-label i{color:var(--brand)}
+.default-link-code{
+  font-family:var(--font-mono);font-size:var(--fs-11);
+  color:var(--fg-1);background:var(--bg-0);
+  border:1px solid var(--line-1);border-radius:var(--r-sm);
+  padding:10px 12px;word-break:break-all;line-height:1.7;
+  max-height:80px;overflow-y:auto;
+}
+.default-link-actions{display:flex;gap:6px;margin-top:var(--sp-3);flex-wrap:wrap}
 
-.tog{width:38px;height:22px;border-radius:99px;background:var(--bg3);border:1px solid var(--card-b);position:relative;flex-shrink:0;transition:background .2s var(--ease)}
-.tog::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.35);transition:transform .2s var(--ease)}
-.tog.on{background:var(--accent);border-color:transparent}
-.tog.on::after{transform:translateX(16px)}
+/* Create panel */
+.create-panel{
+  background:var(--bg-1);border:1px solid var(--line-1);border-radius:var(--r-lg);
+  padding:var(--sp-5);margin-bottom:var(--sp-4);
+}
+.create-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4)}
+.create-col{display:flex;flex-direction:column;gap:var(--sp-3)}
+.chip-row{display:flex;gap:4px;flex-wrap:wrap}
+.create-foot{
+  margin-top:var(--sp-4);padding-top:var(--sp-4);
+  border-top:1px solid var(--line-1);
+  display:flex;align-items:center;justify-content:space-between;
+  gap:var(--sp-3);flex-wrap:wrap;
+}
+.create-hint{
+  font-size:var(--fs-11);color:var(--fg-3);line-height:1.6;
+  display:flex;align-items:flex-start;gap:6px;flex:1;min-width:200px;
+}
+.create-hint i{color:var(--brand);font-size:14px;margin-top:1px;flex-shrink:0}
 
-.form-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
-.fg{display:flex;flex-direction:column;gap:6px}
-.fg label,.pw-field label,.modal-v2-field label,.cp-block-label{font-size:12.5px;font-weight:600;color:var(--t2);display:flex;align-items:center;gap:6px}
-.fi,.fs,.cp-input-full,.pw-input,.modal-v2-input,.subs-search input,.lmodal-search input{height:38px;padding:0 12px;border-radius:var(--r-md);border:1px solid var(--card-b);background:var(--field);color:var(--t1);font-size:13.5px;outline:none;transition:border-color .15s,box-shadow .15s;width:100%}
-.fi,.fs{min-width:100px;width:auto}
-.fi::placeholder,.cp-input-full::placeholder,.pw-input::placeholder,.modal-v2-input::placeholder,.subs-search input::placeholder,.lmodal-search input::placeholder{color:var(--t3)}
-.fi:focus,.fs:focus,.cp-input-full:focus,.pw-input:focus,.modal-v2-input:focus,.subs-search input:focus,.lmodal-search input:focus{border-color:var(--accent);box-shadow:var(--ring)}
-.fs option{background:var(--card)}
-.cl{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;margin-top:12px;border-radius:var(--r-md);background:var(--accent-d);color:var(--t2);font-size:12.5px;line-height:1.6}
-.cl i{font-size:16px;color:var(--accent);margin-top:1px;flex-shrink:0}
-.cl.amber{background:var(--amber-bg);color:var(--amber-t)}.cl.amber i{color:var(--amber)}
-.chip-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
-.chip{font-size:12px;font-weight:550;padding:5px 12px;border-radius:99px;background:transparent;color:var(--t2);border:1px solid var(--card-b);transition:.15s;white-space:nowrap}
-.chip:hover{background:var(--bg3);color:var(--t1)}
-.chip.active{background:var(--accent-d);color:var(--accent2);border-color:transparent}
-.empty{text-align:center;padding:48px 20px;color:var(--t3)}
-.empty i{font-size:38px;opacity:.5;margin-bottom:12px;display:block}
-.empty p{font-size:13px;margin-top:4px}
-.spbar,.ubar,.conn-duration-track,.pw-strength{height:6px;border-radius:99px;background:var(--bg3);overflow:hidden}
-.spbar{margin-top:6px}
-.spfill,.ubar-f{height:100%;border-radius:99px;background:var(--accent);transition:width .6s var(--ease)}
-.utxt{font-size:12px;color:var(--t3);display:flex;justify-content:space-between}
-.m-icon,.traf-mini-icon,.conn-hero-icon,.srv-tile-icon,.conn-stat-icon,.lrow-v2-avatar,.log-ic,.cfg-head-icon,.cp-head-icon,.srv-hero-icon,.pw-hero-icon,.sub-card-icon,.modal-v2-icon,.lmodal-icon,.conn-avatar,.conn-ip-icon,.proto-card-icon,.conn-empty-v2-icon,.subs-empty-v2-icon{display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--accent-d);color:var(--accent)}
-.m-icon{width:36px;height:36px;border-radius:var(--r-md);margin-bottom:12px;font-size:18px}
-.m-icon.suc,.conn-ip-icon{background:var(--green-bg);color:var(--green-t)}
-.m-icon.dan{background:var(--red-bg);color:var(--red-t)}
-.m-icon.pur,.traf-mini-icon.lo{background:var(--purple-bg);color:var(--purple)}
-.traf-mini-icon.pk{background:var(--amber-bg);color:var(--amber)}
+/* Filters */
+.filters{
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  margin-bottom:var(--sp-4);
+}
+.filters .search-wrap{width:240px;margin-left:auto}
 
-/* 5. Pages ----------------------------------------------------------------- */
-/* Overview metrics */
-.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px}
-.metric{background:var(--card);border:1px solid var(--card-b);border-radius:var(--radius);padding:18px;transition:border-color .2s,transform .2s var(--ease)}
-.metric:hover{border-color:var(--card-bh);transform:translateY(-2px)}
-.m-label{font-size:13px;color:var(--t2);margin-bottom:6px;font-weight:550}
-.m-val{font-size:28px;font-weight:700;line-height:1.1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
-.m-unit{font-size:13px;font-weight:500;color:var(--t3)}
-.m-sub{font-size:12px;color:var(--t3);margin-top:8px;display:flex;align-items:center;gap:4px}
-.vless-box{background:var(--card);border:1px solid var(--card-b);border-left:3px solid var(--accent);border-radius:var(--radius);padding:20px;margin-bottom:16px}
-.vl-header{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:14px}
-.vl-title{font-size:14px;font-weight:650;display:flex;align-items:center;gap:8px}
-.vl-title i{color:var(--accent);font-size:18px}
-.vl-code{background:var(--field);border:1px solid var(--card-b);border-radius:var(--r-md);padding:12px 14px;font-size:12px;font-family:var(--mono);color:var(--accent2);word-break:break-all;line-height:1.8}
-.vl-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+/* Config grid */
+.config-grid{display:grid;gap:var(--sp-3);grid-template-columns:repeat(auto-fill,minmax(380px,1fr))}
 
-/* Traffic */
-.traf-hero{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:16px;margin-bottom:16px}
-.traf-main-stat,.traf-mini,.traf-chart-card{background:var(--card);border:1px solid var(--card-b);border-radius:var(--radius)}
-.traf-main-stat{padding:22px;border-top:3px solid var(--accent)}
-.traf-main-label,.traf-mini-label,.conn-hero-label{font-size:13px;color:var(--t2);font-weight:550;display:flex;align-items:center;gap:6px}
-.traf-main-label{margin-bottom:10px}
-.traf-main-val{font-size:36px;font-weight:700;line-height:1;letter-spacing:-.03em;display:flex;align-items:baseline;gap:6px;font-variant-numeric:tabular-nums}
-.traf-main-val span{font-size:15px;font-weight:500;color:var(--t3)}
-.traf-trend{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:99px;margin-top:12px}
-.traf-trend.up{background:var(--green-bg);color:var(--green-t)}.traf-trend.down{background:var(--red-bg);color:var(--red-t)}
-.traf-mini{padding:18px;display:flex;flex-direction:column;justify-content:space-between}
-.traf-mini-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-.traf-mini-icon{width:34px;height:34px;border-radius:var(--r-md);font-size:16px}
-.traf-mini-val{font-size:22px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
-.traf-mini-sub{font-size:12px;color:var(--t3);margin-top:3px}
-.traf-chart-card{padding:22px;margin-bottom:16px}
-.traf-chart-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px}
-.traf-chart-title{font-size:15px;font-weight:650;display:flex;align-items:center;gap:8px}
-.traf-chart-title i{color:var(--accent);font-size:18px}
-.traf-chart-sub{font-size:12.5px;color:var(--t3);margin-top:3px}
-.traf-legend{display:flex;gap:14px;align-items:center}
-.traf-legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t2)}
-.traf-legend-dot{width:8px;height:8px;border-radius:3px}
-.traf-range-tabs{display:inline-flex;gap:2px;background:var(--bg3);padding:3px;border-radius:var(--r-md)}
-.traf-range-tab{padding:5px 13px;border-radius:var(--r-sm);font-size:12px;font-weight:550;color:var(--t2);border:0;background:transparent;transition:.15s}
-.traf-range-tab.on{background:var(--card);color:var(--t1);box-shadow:var(--shadow)}
-.traf-chart-body{height:320px;margin-top:14px;position:relative}
+/* Connections stats strip */
+.conn-hero{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-3);margin-bottom:var(--sp-4)}
 
-/* Create config panel, server info, password */
-.create-panel,.srv-panel,.pw-panel{background:var(--card);border:1px solid var(--card-b);border-radius:var(--radius);overflow:hidden;margin-bottom:16px}
-.cp-head,.srv-hero,.pw-hero{display:flex;align-items:center;gap:14px;padding:20px 24px;border-bottom:1px solid var(--card-b)}
-.cp-head-icon,.srv-hero-icon,.pw-hero-icon{width:44px;height:44px;border-radius:var(--r-md);font-size:20px}
-.cp-head-text,.srv-hero-text,.pw-hero-text{flex:1;min-width:0}
-.cp-head-title,.pw-hero-title{font-size:16px;font-weight:650;letter-spacing:-.01em}
-.srv-hero-domain{font-size:16px;font-weight:650;word-break:break-all}
-.cp-head-sub,.pw-hero-sub,.srv-hero-sub{font-size:13px;color:var(--t3);margin-top:2px;display:flex;align-items:center;gap:6px}
-.cp-body,.pw-body{padding:20px 24px 24px}
-.cp-row{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:16px}
-.cp-block{background:var(--bg2);border:1px solid var(--card-b);border-radius:var(--r-md);padding:16px}
-.cp-block-label{margin-bottom:12px}
-.cp-block-label i{color:var(--accent);font-size:16px}
-.cp-mini-row{display:flex;gap:8px;margin-top:10px}
-.cp-quota-inputs{display:flex;gap:8px}
-.cp-quota-inputs .cp-input-full{flex:1}
-.cp-quota-inputs select.cp-input-full{flex:0 0 84px}
-.proto-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.proto-card{border:1.5px solid var(--card-b);border-radius:var(--r-md);padding:14px 12px;text-align:center;position:relative;background:transparent;transition:border-color .15s,background .15s}
-.proto-card:hover{border-color:var(--card-bh)}
-.proto-card.active{border-color:var(--accent);background:var(--accent-d)}
-.proto-card-check{position:absolute;top:8px;right:8px;width:16px;height:16px;border-radius:50%;background:var(--accent);color:var(--on-accent);font-size:10px;display:flex;align-items:center;justify-content:center;opacity:0;transform:scale(.5);transition:.18s var(--ease)}
-.proto-card.active .proto-card-check{opacity:1;transform:scale(1)}
-.proto-card-icon{width:34px;height:34px;border-radius:var(--r-md);font-size:17px;margin:0 auto 8px}
-.proto-card.active .proto-card-icon{background:var(--accent);color:var(--on-accent)}
-.proto-card-title{font-size:13px;font-weight:650}
-.proto-card-desc{font-size:11.5px;color:var(--t3);margin-top:3px;line-height:1.5}
-.cp-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:16px;border-top:1px solid var(--card-b);flex-wrap:wrap}
-.cp-footer-note{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--t3);flex:1;min-width:220px}
-.cp-footer-note i{color:var(--accent);font-size:16px;flex-shrink:0}
-.cp-submit-btn,.pw-submit{display:flex;align-items:center;justify-content:center;gap:8px;height:42px;padding:0 24px;border-radius:var(--r-md);border:0;background:var(--accent);color:var(--on-accent);font-size:14px;font-weight:600;transition:filter .15s,transform .12s}
-.cp-submit-btn:hover,.pw-submit:hover{filter:brightness(1.1)}
-.cp-submit-btn:active,.pw-submit:active{transform:scale(.98)}
-.pw-submit{width:100%}
-.srv-tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:20px 24px 24px}
-.srv-tile{display:flex;align-items:center;gap:12px;background:var(--bg2);border:1px solid var(--card-b);border-radius:var(--r-md);padding:12px 14px}
-.srv-tile-icon{width:36px;height:36px;border-radius:var(--r-md);font-size:17px}
-.srv-tile-text{min-width:0}
-.srv-tile-label{font-size:12px;color:var(--t3);margin-bottom:2px}
-.srv-tile-val{font-size:13.5px;font-weight:600;word-break:break-word}
-.pw-field{position:relative;margin-bottom:14px}
-.pw-field label{margin-bottom:6px}
-.pw-input{padding-right:42px}
-.pw-eye{position:absolute;right:8px;top:30px;width:30px;height:30px;background:none;border:0;border-radius:var(--r-sm);color:var(--t3);font-size:17px;display:flex;align-items:center;justify-content:center}
-.pw-eye:hover{color:var(--t1);background:var(--bg3)}
-.pw-strength{height:5px;margin-top:8px;display:flex;gap:3px;background:none}
-.pw-strength-seg{flex:1;height:100%;border-radius:99px;background:var(--bg3);transition:background .25s}
-.pw-strength-label{font-size:12px;color:var(--t3);margin-top:6px;display:flex;align-items:center;gap:6px}
-.pw-reqs{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 18px}
-.pw-req{font-size:12px;padding:3px 10px;border-radius:99px;background:var(--bg3);color:var(--t3);font-weight:550;display:flex;align-items:center;gap:5px;transition:.18s}
-.pw-req.met{background:var(--green-bg);color:var(--green-t)}
+/* Traffic hero */
+.traffic-hero{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:var(--sp-3);margin-bottom:var(--sp-4)}
+.traffic-main{
+  background:linear-gradient(155deg,var(--bg-2),var(--bg-1));
+  border:1px solid var(--line-1);border-radius:var(--r-lg);
+  padding:var(--sp-5);position:relative;overflow:hidden;
+}
+.traffic-main::before{
+  content:'';position:absolute;top:-40px;right:-40px;
+  width:160px;height:160px;
+  background:radial-gradient(circle,var(--brand-lo),transparent 70%);
+  pointer-events:none;
+}
+.traffic-main .label{
+  font-size:var(--fs-11);color:var(--fg-2);
+  text-transform:uppercase;letter-spacing:.06em;font-weight:600;
+  margin-bottom:var(--sp-2);display:flex;align-items:center;gap:6px;
+}
+.traffic-main .label i{color:var(--brand)}
+.traffic-main .value{
+  font-size:var(--fs-36);font-weight:700;letter-spacing:-.03em;
+  line-height:1;display:flex;align-items:baseline;gap:6px;
+}
+.traffic-main .value .unit{font-size:var(--fs-14);color:var(--fg-2);font-weight:500}
 
-/* Live connections */
-.conn-hero{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
-.conn-hero-tile{background:var(--card);border:1px solid var(--card-b);border-radius:var(--radius);padding:18px}
-.conn-hero-icon{width:34px;height:34px;border-radius:var(--r-md);background:var(--green-bg);color:var(--green-t);font-size:17px;margin-bottom:12px}
-.conn-hero-tile:nth-child(2) .conn-hero-icon{background:var(--accent-d);color:var(--accent)}
-.conn-hero-tile:nth-child(3) .conn-hero-icon{background:var(--purple-bg);color:var(--purple)}
-.conn-hero-tile:nth-child(4) .conn-hero-icon{background:var(--amber-bg);color:var(--amber)}
-.conn-hero-label{margin-bottom:4px}
-.conn-hero-val{font-size:24px;font-weight:700;line-height:1.1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
-.conn-hero-unit{font-size:13px;color:var(--t3);font-weight:500}
-.conn-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px}
-.conn-toolbar-title{font-size:15px;font-weight:650;display:flex;align-items:center;gap:8px}
-.conn-toolbar-title i{color:var(--green-t);font-size:18px}
-.conn-live-badge{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--green-t);background:var(--green-bg);padding:4px 12px;border-radius:99px}
-.conn-live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);color:var(--green);animation:ring 2s infinite}
-.conn-grid-v2,.conn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
-.conn-card-v2,.conn-card{background:var(--card);border:1px solid var(--card-b);border-radius:var(--radius);overflow:hidden;transition:border-color .2s,transform .2s var(--ease);position:relative}
-.conn-card-v2:hover,.conn-card:hover{border-color:var(--card-bh);transform:translateY(-2px)}
-.conn-card-v2-glow{display:none}
-.conn-card-v2-top{display:flex;align-items:center;gap:12px;padding:16px 18px 14px}
-.conn-avatar{width:42px;height:42px;border-radius:var(--r-md);background:var(--green-bg);color:var(--green-t);font-size:18px;position:relative}
-.conn-avatar::after{content:'';position:absolute;inset:-4px;border-radius:15px;border:1.5px solid var(--green);animation:ring 2.4s infinite;color:var(--green);opacity:.5}
-.conn-card-v2-id{flex:1;min-width:0}
-.conn-ip-v2,.conn-ip{font-family:var(--mono);font-size:14px;font-weight:700;display:flex;align-items:center;gap:6px}
-.conn-ip-copy{background:none;border:0;color:var(--t3);font-size:14px;padding:2px;display:flex}.conn-ip-copy:hover{color:var(--accent)}
-.conn-label-v2,.conn-label{font-size:12px;color:var(--t3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.conn-status-pill{font-size:11px;padding:3px 10px;background:var(--green-bg);color:var(--green-t);flex-shrink:0}
-.conn-card-v2-divider{height:1px;background:var(--card-b);margin:0 18px}
-.conn-card-v2-body{padding:14px 18px 18px}
-.conn-proto-row{margin-bottom:12px}
-.conn-stat-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
-.conn-stat-box{display:flex;align-items:center;gap:8px}
-.conn-stat-icon{width:28px;height:28px;border-radius:var(--r-sm);font-size:14px}
-.conn-stat-icon.time{background:var(--purple-bg);color:var(--purple)}
-.conn-stat-text-label{font-size:11px;color:var(--t3)}
-.conn-stat-text-val{font-size:13px;font-weight:600;margin-top:1px}
-.conn-duration-fill{height:100%;border-radius:99px;background:var(--green);position:relative;overflow:hidden}
-.conn-duration-fill::after{content:'';position:absolute;inset:0;width:40%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);animation:shimmer 1.8s linear infinite}
-.conn-card{padding:16px 18px;border-left:3px solid var(--green)}
-.conn-ip-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-.conn-ip-icon{width:34px;height:34px;border-radius:var(--r-md);font-size:16px}
-.conn-meta{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--t3);padding-top:10px;border-top:1px solid var(--card-b)}
-.conn-empty-v2,.subs-empty-v2{text-align:center;padding:64px 20px;background:var(--card);border:1.5px dashed var(--card-b);border-radius:var(--radius)}
-.conn-empty-v2-icon,.subs-empty-v2-icon{width:60px;height:60px;border-radius:var(--r-lg);font-size:26px;margin:0 auto 16px;color:var(--t3)}
-.subs-empty-v2-icon{color:var(--purple);background:var(--purple-bg)}
-.conn-empty-v2-title,.subs-empty-v2-title{font-size:15px;font-weight:650;margin-bottom:6px}
-.conn-empty-v2-sub,.subs-empty-v2-sub{font-size:13px;color:var(--t3)}
-.subs-empty-v2{grid-column:1/-1}
+/* Groups grid */
+.group-grid{display:grid;gap:var(--sp-3);grid-template-columns:repeat(auto-fill,minmax(340px,1fr));margin-bottom:var(--sp-4)}
 
-/* Sub groups */
-.sub-box{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:12px;padding:14px 16px;background:var(--purple-bg);border-radius:var(--r-md)}
-.sub-url{font-family:var(--mono);font-size:12px;color:var(--purple);word-break:break-all;flex:1}
-.subs-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
-.subs-search{flex:1;min-width:200px;position:relative}
-.subs-search input{padding-left:38px;background:var(--card)}
-.subs-search i{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--t3);font-size:16px}
-.sub-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;margin-bottom:18px}
-.sub-card{background:var(--card);border:1px solid var(--card-b);border-radius:var(--radius);overflow:hidden;transition:border-color .2s,transform .2s var(--ease),box-shadow .2s}
-.sub-card:hover{border-color:var(--card-bh);transform:translateY(-3px);box-shadow:var(--shadow)}
-.sub-card-top{padding:20px 20px 16px;border-bottom:1px solid var(--card-b)}
-.sub-card-head-v2{display:flex;align-items:flex-start;gap:12px}
-.sub-card-icon{width:44px;height:44px;border-radius:var(--r-md);font-size:20px;background:var(--purple-bg);color:var(--purple)}
-.sub-card-titles{flex:1;min-width:0}
-.sub-card-name-v2{font-size:16px;font-weight:650;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sub-card-desc-v2{font-size:12.5px;color:var(--t3);margin-top:3px;line-height:1.6;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.sub-card-lock-badge{flex-shrink:0;width:28px;height:28px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;font-size:14px}
-.sub-card-lock-badge.locked{background:var(--amber-bg);color:var(--amber-t)}
-.sub-card-lock-badge.open{background:var(--green-bg);color:var(--green-t)}
-.sub-card-stats{display:grid;grid-template-columns:repeat(3,1fr);margin-top:16px;background:var(--bg2);border:1px solid var(--card-b);border-radius:var(--r-md);overflow:hidden}
-.sub-card-stat{padding:10px 8px;text-align:center;border-right:1px solid var(--card-b)}
-.sub-card-stat:last-child{border-right:0}
-.sub-card-stat-val{font-size:16px;font-weight:700;line-height:1.2;font-variant-numeric:tabular-nums}
-.sub-card-stat-label{font-size:11.5px;color:var(--t3);margin-top:3px}
-.sub-card-url-row{margin:14px 20px 0;background:var(--bg2);border:1px dashed var(--card-b);border-radius:var(--r-md);padding:9px 12px;display:flex;align-items:center;gap:8px}
-.sub-card-url-text{font-family:var(--mono);font-size:11px;color:var(--t2);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sub-card-url-copy{background:none;border:0;color:var(--t3);font-size:15px;padding:3px;display:flex;flex-shrink:0}.sub-card-url-copy:hover{color:var(--accent)}
-.sub-card-bottom{padding:14px 20px 18px;display:flex;gap:8px;flex-wrap:wrap}
-.sub-card-bottom .btn{flex:1;min-width:fit-content}
+/* Connections grid */
+.conn-grid{display:grid;gap:var(--sp-3);grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
 
-/* Config list */
-.cfg-grid{display:flex;flex-direction:column;gap:10px}
-.cfg-card{background:var(--card);border:1px solid var(--card-b);border-radius:var(--r-lg);transition:border-color .2s,box-shadow .2s;overflow:hidden}
-.cfg-card:hover{border-color:var(--card-bh);box-shadow:var(--shadow)}
-.cfg-card.is-off{opacity:.6}.cfg-card.is-exp{opacity:.8}
-.cfg-row{display:flex;align-items:center;gap:16px;padding:14px 18px}
-.cfg-status-dot{width:10px;height:10px;border-radius:50%;background:var(--green);flex-shrink:0;box-shadow:0 0 0 4px var(--green-bg)}
-.cfg-card.is-off .cfg-status-dot{background:var(--red);box-shadow:0 0 0 4px var(--red-bg)}
-.cfg-card.is-exp .cfg-status-dot{background:var(--amber);box-shadow:0 0 0 4px var(--amber-bg)}
-.cfg-identity{display:flex;flex-direction:column;gap:4px;min-width:150px;flex-shrink:0}
-.cfg-label{font-size:14.5px;font-weight:650;display:flex;align-items:center;gap:8px}
-.cfg-sub-meta{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t3)}
-.cfg-uuid-mini{font-family:var(--mono);font-size:11px;color:var(--t2);background:var(--bg3);padding:2px 8px;border-radius:6px;cursor:pointer;transition:.15s}
-.cfg-uuid-mini:hover{color:var(--accent2);background:var(--accent-d)}
-.cfg-divider-v{width:1px;align-self:stretch;background:var(--card-b);flex-shrink:0}
-.cfg-usage-col{flex:1;min-width:160px;display:flex;flex-direction:column;gap:6px}
-.cfg-exp-col{flex-shrink:0;min-width:110px}
-.cfg-badges-col{display:flex;flex-direction:column;gap:6px;flex-shrink:0;align-items:flex-end}
-.cfg-actions{display:flex;gap:6px;flex-shrink:0}
-.cfg-sub-tag{font-size:12px;color:var(--t3);display:flex;align-items:center;gap:4px;white-space:nowrap}
-.cfg-sub-tag i{color:var(--purple);font-size:13px}
+/* Subscriptions */
+.sub-list-row{
+  display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);
+  padding:var(--sp-3);background:var(--bg-2);border:1px solid var(--line-1);
+  border-radius:var(--r-md);margin-bottom:6px;flex-wrap:wrap;
+}
+.sub-list-row .info{flex:1;min-width:200px}
+.sub-list-row .name{font-weight:600;font-size:var(--fs-13)}
+.sub-list-row .url{font-family:var(--font-mono);font-size:var(--fs-11);color:var(--fg-2);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sub-list-row .actions{display:flex;gap:4px}
 
-/* Activity log */
-.log-timeline{display:flex;flex-direction:column}
-.log-item{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--card-b)}
-.log-item:last-child{border-bottom:0}
-.log-ic{width:32px;height:32px;border-radius:var(--r-md);font-size:15px}
-.log-ic.ok{background:var(--green-bg);color:var(--green-t)}.log-ic.err{background:var(--red-bg);color:var(--red-t)}.log-ic.warn{background:var(--amber-bg);color:var(--amber-t)}
+/* Security / logs / errors */
+.log-item{
+  display:flex;gap:var(--sp-3);padding:var(--sp-3) 0;
+  border-bottom:1px solid var(--line-1);
+}
+.log-item:last-child{border-bottom:none}
+.log-ic{
+  width:30px;height:30px;border-radius:var(--r-sm);
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;flex-shrink:0;
+}
+.log-ic.ok{background:var(--ok-bg);color:var(--ok-fg)}
+.log-ic.err{background:var(--err-bg);color:var(--err-fg)}
+.log-ic.warn{background:var(--warn-bg);color:var(--warn-fg)}
+.log-ic.info{background:var(--info-bg);color:var(--info-fg)}
 .log-body{flex:1;min-width:0}
-.log-msg{font-size:13.5px;line-height:1.6}
-.log-time{font-size:12px;color:var(--t3);margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.log-kind{font-size:11px;padding:1px 8px;border-radius:99px;background:var(--accent-d);color:var(--accent2);font-weight:600}
-.erow{padding:10px 0;border-bottom:1px solid var(--card-b)}.erow:last-child{border-bottom:0}
-.etime{color:var(--t3);font-size:12px;margin-bottom:4px;display:flex;align-items:center;gap:4px}
-.emsg{color:var(--red-t);font-family:var(--mono);background:var(--red-bg);padding:7px 10px;border-radius:var(--r-sm);word-break:break-all;font-size:12px}
-.dash-footer{border-top:1px solid var(--card-b);margin-top:16px;padding-top:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
-.df-text{font-size:12px;color:var(--t3)}
-.df-link{font-size:13px;color:var(--accent2);display:flex;align-items:center;gap:6px;font-weight:600}
+.log-msg{font-size:var(--fs-13);line-height:1.6}
+.log-time{
+  font-size:var(--fs-11);color:var(--fg-3);margin-top:3px;
+  display:flex;align-items:center;gap:6px;font-family:var(--font-mono);
+}
+.log-kind{
+  font-size:9px;padding:1px 6px;border-radius:var(--r-xs);
+  background:var(--bg-3);color:var(--fg-2);
+  text-transform:uppercase;letter-spacing:.04em;font-weight:600;
+}
+.err-item{padding:var(--sp-3) 0;border-bottom:1px solid var(--line-1)}
+.err-item:last-child{border-bottom:none}
+.err-time{font-family:var(--font-mono);font-size:var(--fs-11);color:var(--fg-3);margin-bottom:4px}
+.err-msg{
+  font-family:var(--font-mono);font-size:var(--fs-11);
+  background:var(--err-bg);color:var(--err-fg);
+  padding:8px 10px;border-radius:var(--r-sm);word-break:break-all;
+  border:1px solid var(--err-line);
+}
 
-/* 6. Overlays -------------------------------------------------------------- */
-.modal-bg{display:none;position:fixed;inset:0;background:var(--scrim);z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(5px);padding:16px}
-.modal-bg.open{display:flex}
-.modal,.modal-v2{background:var(--card);border:1px solid var(--card-b);border-radius:20px;width:100%;max-height:92vh;overflow-y:auto;position:relative;box-shadow:var(--shadow-lg);animation:fi .22s var(--ease)}
-.modal{max-width:520px;padding:26px}
-.modal-v2{max-width:430px;padding:0}
-.modal-close,.modal-v2-close{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:var(--r-sm);background:var(--bg3);border:0;color:var(--t2);font-size:16px;display:flex;align-items:center;justify-content:center;z-index:2;transition:.15s}
-.modal-close:hover,.modal-v2-close:hover{background:var(--red-bg);color:var(--red-t)}
-.modal-title{font-size:17px;font-weight:650;margin-bottom:18px;display:flex;align-items:center;gap:8px;letter-spacing:-.01em}
-.modal-title i{color:var(--accent)}
-.modal-v2-head{padding:22px 22px 16px}
-.modal-v2-icon{width:42px;height:42px;border-radius:var(--r-md);font-size:20px;margin-bottom:12px}
-.modal-v2-title{font-size:17px;font-weight:650;letter-spacing:-.01em}
-.modal-v2-sub{font-size:13px;color:var(--t3);margin-top:3px;line-height:1.6}
-.modal-v2-body{padding:16px 22px 22px;border-top:1px solid var(--card-b)}
-.modal-v2-field{margin-bottom:12px}
-.modal-v2-field label{margin-bottom:6px}
-.modal-v2-field label i{color:var(--accent);font-size:14px}
-.modal-v2-input-wrap{position:relative}
-.modal-v2-input-wrap>i{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--t3);font-size:15px;pointer-events:none}
-.modal-v2-input-wrap .modal-v2-input{padding-left:38px}
-.modal-v2-hint{display:flex;gap:8px;align-items:flex-start;padding:10px 12px;border-radius:var(--r-md);background:var(--accent-d);font-size:12.5px;color:var(--t2);line-height:1.6}
-.modal-v2-hint i{font-size:15px;color:var(--accent);margin-top:1px;flex-shrink:0}
-.modal-v2-footer{display:flex;gap:8px;margin-top:16px}
-.modal-v2-footer .btn{flex:1;height:38px}
-.modal-v2-btn-cancel,.modal-v2-btn-submit{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;height:38px;border-radius:var(--r-md);font-size:13px;font-weight:600;border:1px solid var(--card-b);background:transparent;color:var(--t2)}
-.modal-v2-btn-submit{background:var(--accent);color:var(--on-accent);border-color:transparent}
-.lmodal-head{padding:22px 24px 16px;border-bottom:1px solid var(--card-b);position:relative}
-.lmodal-icon-row{display:flex;align-items:center;gap:12px;padding-right:36px}
-.lmodal-icon{width:44px;height:44px;border-radius:var(--r-md);font-size:20px}
-.lmodal-title-v2{font-size:16px;font-weight:650}
-.lmodal-sub-v2{font-size:12.5px;color:var(--t3);margin-top:2px}
-.lmodal-search{margin-top:14px;position:relative}
-.lmodal-search input{padding-left:38px}
-.lmodal-search i{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--t3);font-size:15px}
-.lmodal-quickbar{display:flex;gap:8px;margin-top:12px;align-items:center}
-.lmodal-qbtn{font-size:12px;font-weight:550;padding:5px 12px;border-radius:var(--r-sm);background:var(--accent-d);color:var(--accent2);border:0;display:inline-flex;align-items:center;gap:4px;transition:.15s}
-.lmodal-qbtn:hover{filter:brightness(1.15)}
-.lmodal-count{margin-left:auto;font-size:12px;color:var(--t3)}
-.lmodal-list{padding:10px 14px;max-height:360px;overflow-y:auto}
-.lrow-v2{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:var(--r-md);cursor:pointer;margin-bottom:4px;border:1px solid transparent;transition:.15s}
-.lrow-v2:hover{background:var(--bg3)}
-.lrow-v2.checked{background:var(--accent-d);border-color:var(--accent)}
-.lrow-v2-check{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--t3);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:.15s}
-.lrow-v2.checked .lrow-v2-check{background:var(--accent);border-color:var(--accent)}
-.lrow-v2-check i{font-size:13px;color:var(--on-accent);opacity:0;transform:scale(.5);transition:.15s}
-.lrow-v2.checked .lrow-v2-check i{opacity:1;transform:scale(1)}
-.lrow-v2-avatar{width:34px;height:34px;border-radius:var(--r-sm);font-size:15px}
-.lrow-v2.checked .lrow-v2-avatar{background:var(--accent);color:var(--on-accent)}
-.lrow-v2-info{flex:1;min-width:0}
-.lrow-v2-name{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.lrow-v2-meta{font-size:12px;color:var(--t3);margin-top:2px;display:flex;align-items:center;gap:6px}
-.lrow-v2-status{font-size:11px;font-weight:600;padding:2px 9px;border-radius:99px;flex-shrink:0}
-.lrow-v2-status.on{background:var(--green-bg);color:var(--green-t)}.lrow-v2-status.off{background:var(--red-bg);color:var(--red-t)}
-.lmodal-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 24px;border-top:1px solid var(--card-b);flex-wrap:wrap}
-.lmodal-footer-info{font-size:12px;color:var(--t3);display:flex;align-items:center;gap:6px}
-.lmodal-footer-info i{color:var(--accent)}
-.lmodal-footer-btns{display:flex;gap:8px}
-.lrow{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--card-b)}.lrow:last-child{border-bottom:0}
-.lrow-check{width:16px;height:16px;cursor:pointer;accent-color:var(--accent)}
-.lrow-label{flex:1;font-size:13px}
-.lrow-badge{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--green-bg);color:var(--green-t);font-weight:600}
-.toast{position:fixed;bottom:calc(22px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%) translateY(40px);background:var(--card);border:1px solid var(--card-b);border-left:3px solid var(--accent);color:var(--t1);border-radius:var(--r-md);padding:11px 18px;font-size:13.5px;opacity:0;transition:opacity .25s,transform .25s var(--ease);z-index:900;box-shadow:var(--shadow-lg);pointer-events:none;max-width:calc(100vw - 32px)}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-.toast.ok{border-left-color:var(--green)}.toast.err{border-left-color:var(--red)}
+/* Settings */
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4)}
+.pw-form{display:flex;flex-direction:column;gap:var(--sp-3);max-width:420px}
+.pw-strength{display:flex;gap:3px;margin-top:6px}
+.pw-strength span{flex:1;height:3px;border-radius:2px;background:var(--bg-3);transition:background var(--dur-2) var(--ease)}
+.pw-strength.l1 span:nth-child(1){background:var(--err-fg)}
+.pw-strength.l2 span:nth-child(1),.pw-strength.l2 span:nth-child(2){background:var(--warn-fg)}
+.pw-strength.l3 span:nth-child(-n+3){background:var(--info-fg)}
+.pw-strength.l4 span{background:var(--ok-fg)}
+.pw-reqs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.pw-req{
+  font-size:10px;padding:3px 8px;border-radius:var(--r-xs);
+  background:var(--bg-2);color:var(--fg-3);font-weight:500;
+  transition:all var(--dur-2) var(--ease);
+}
+.pw-req.met{background:var(--ok-bg);color:var(--ok-fg)}
 
-/* 7. Responsive ------------------------------------------------------------ */
+/* Support */
+.support-tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--sp-3)}
+.support-tile{
+  display:flex;align-items:center;gap:var(--sp-3);
+  padding:var(--sp-4);background:var(--bg-2);
+  border:1px solid var(--line-1);border-radius:var(--r-md);
+  transition:border-color var(--dur-2) var(--ease);
+}
+.support-tile:hover{border-color:var(--line-2)}
+.support-tile .ico{
+  width:36px;height:36px;border-radius:var(--r-md);
+  background:var(--brand-lo);color:var(--brand);
+  display:flex;align-items:center;justify-content:center;font-size:17px;
+}
+.support-tile .t{font-size:var(--fs-11);color:var(--fg-3);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+.support-tile .v{font-size:var(--fs-13);font-weight:500;margin-top:2px}
+
+/* WebSocket test */
+.ws-log{
+  background:var(--bg-0);border:1px solid var(--line-1);border-radius:var(--r-md);
+  padding:var(--sp-3);height:240px;overflow-y:auto;
+  font-family:var(--font-mono);font-size:var(--fs-11);line-height:1.7;
+}
+
+/* Modal + picker (reuses base) */
+.picker-list{max-height:320px;overflow-y:auto;margin:var(--sp-2) 0}
+.picker-row{
+  display:flex;align-items:center;gap:var(--sp-3);padding:8px;
+  border-radius:var(--r-sm);cursor:pointer;transition:background var(--dur-1) var(--ease);
+  font-size:var(--fs-13);
+}
+.picker-row:hover{background:var(--bg-hover)}
+.picker-row input{accent-color:var(--brand);width:15px;height:15px}
+.picker-row .lbl{flex:1}
+.picker-row .meta{font-family:var(--font-mono);font-size:var(--fs-11);color:var(--fg-3)}
+
+/* Utilities */
+.row{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
+.mt-3{margin-top:var(--sp-3)}
+.mt-4{margin-top:var(--sp-4)}
+.mono{font-family:var(--font-mono)}
+.text-muted{color:var(--fg-2)}
+.text-sm{font-size:var(--fs-12)}
+
+/* Responsive */
 @media(max-width:1100px){
-  .traf-hero{grid-template-columns:1fr 1fr}
+  .app{grid-template-columns:1fr}
+  .side{display:none}
+  .mobile-bar{display:flex}
+  .main{padding:var(--sp-4)}
+  .grid-4{grid-template-columns:repeat(2,1fr)}
+  .grid-3-1{grid-template-columns:1fr}
+  .traffic-hero{grid-template-columns:1fr 1fr}
   .conn-hero{grid-template-columns:1fr 1fr}
+  .create-grid{grid-template-columns:1fr}
+  .settings-grid{grid-template-columns:1fr}
 }
-@media(max-width:1050px){
-  .sidebar{transform:translateX(-100%)}
-  .sidebar.open{transform:none;box-shadow:var(--shadow-lg)}
-  .sb-close{display:flex}
-  .main{margin-left:0;padding:76px 20px 56px}
-  .mob-top{display:flex}
-  .metrics{grid-template-columns:1fr 1fr}
-  .g2,.g3{grid-template-columns:1fr}
+@media(max-width:640px){
+  .grid-4,.grid-2{grid-template-columns:1fr}
+  .traffic-hero{grid-template-columns:1fr}
+  .conn-hero{grid-template-columns:1fr 1fr}
+  .filters .search-wrap{width:100%;margin-left:0}
+  .config-grid,.group-grid,.conn-grid{grid-template-columns:1fr}
+  .support-tiles{grid-template-columns:1fr}
+  .page-top-actions{width:100%}
 }
-@media(max-width:880px){
-  .cfg-row{flex-wrap:wrap}.cfg-divider-v{display:none}.cfg-usage-col{min-width:100%;order:5}
+
+/* Slide-over for mobile nav */
+.side.open{display:flex;position:fixed;z-index:200;width:240px;box-shadow:var(--shadow-3);transform:translateX(0)}
+.side-backdrop{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:150;
+  backdrop-filter:blur(2px);
 }
-@media(max-width:768px){
-  .cfg-grid{display:grid;grid-template-columns:1fr;gap:12px}
-  .cfg-row{flex-direction:column;align-items:stretch;gap:12px;padding:16px}
-  .cfg-row-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
-  .cfg-identity{min-width:0;flex:1}.cfg-usage-col,.cfg-exp-col{min-width:0}
-  .cfg-badges-col{flex-direction:row;align-items:center;flex-wrap:wrap}
-  .cfg-actions{flex-wrap:wrap;border-top:1px solid var(--card-b);padding-top:10px;width:100%}
-}
-@media(max-width:760px){
-  .cp-row,.proto-cards{grid-template-columns:1fr}
-  .cp-footer{flex-direction:column;align-items:stretch}
-  .cp-submit-btn{width:100%}
-}
-@media(max-width:560px){
-  .srv-tiles,.traf-hero,.conn-hero{grid-template-columns:1fr}
-  .traf-chart-body{height:260px}
-  .conn-grid-v2,.conn-grid,.sub-grid{grid-template-columns:1fr}
-}
-@media(max-width:500px){
-  .metrics{grid-template-columns:1fr}
-  .main{padding:72px 14px 48px}
-  .cp-head,.srv-hero,.pw-hero{padding:16px}.cp-body,.pw-body{padding:16px}.srv-tiles{padding:16px}
-}
+.side-backdrop.open{display:block}
 </style>
 </head>
 <body>
-<div class="toast" id="toast" role="status" aria-live="polite"></div>
-<div class="modal-bg" role="dialog" aria-modal="true" id="modal-links">
-  <div class="modal-v2" style="max-width:500px">
-    <div class="lmodal-head">
-      <button class="modal-v2-close" onclick="closeModal('modal-links')"><i class="ti ti-x"></i></button>
-      <div class="lmodal-icon-row">
-        <div class="lmodal-icon"><i class="ti ti-link-plus"></i></div>
+
+<!-- Mobile top bar -->
+<div class="mobile-bar">
+  <div class="brand-mark">G</div>
+  <div class="brand-txt">Gateway</div>
+  <div class="spacer"></div>
+  <button class="btn btn-icon btn-sm" onclick="toggleTheme()" aria-label="Toggle theme"><i class="ti ti-sun" id="mob-theme-icon"></i></button>
+  <button class="btn btn-icon btn-sm" onclick="openNav()" aria-label="Open menu"><i class="ti ti-menu-2"></i></button>
+</div>
+<div class="side-backdrop" id="nav-backdrop" onclick="closeNav()"></div>
+
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="side" id="side">
+    <div class="side-brand">
+      <div class="brand-mark">G</div>
+      <div class="brand-txt">Gateway</div>
+      <div class="brand-ver">v12</div>
+    </div>
+
+    <div class="side-sec">Panel</div>
+    <nav class="side-nav">
+      <div class="side-item is-active" data-page="overview"><i class="ti ti-layout-dashboard"></i>Overview</div>
+      <div class="side-item" data-page="links"><i class="ti ti-link"></i>Configs<span class="count" id="nb-links">0</span></div>
+      <div class="side-item" data-page="subgroups"><i class="ti ti-folders"></i>Sub-groups<span class="count" id="nb-subs">0</span></div>
+      <div class="side-item" data-page="subscriptions"><i class="ti ti-rss"></i>Subscriptions</div>
+      <div class="side-item" data-page="traffic"><i class="ti ti-chart-area"></i>Traffic</div>
+      <div class="side-item" data-page="connections"><i class="ti ti-plug-connected"></i>Connections<span class="count" id="nb-conns">0</span></div>
+    </nav>
+
+    <div class="side-sec">System</div>
+    <nav class="side-nav">
+      <div class="side-item" data-page="security"><i class="ti ti-shield-lock"></i>Security</div>
+      <div class="side-item" data-page="logs"><i class="ti ti-history"></i>Activity</div>
+      <div class="side-item" data-page="errors"><i class="ti ti-alert-triangle"></i>Errors</div>
+      <div class="side-item" data-page="testws"><i class="ti ti-wifi"></i>WebSocket test</div>
+      <div class="side-item" data-page="settings"><i class="ti ti-settings"></i>Settings</div>
+      <div class="side-item" data-page="support"><i class="ti ti-headset"></i>Support</div>
+    </nav>
+
+    <div class="side-foot">
+      <button class="btn btn-secondary btn-sm" onclick="toggleTheme()"><i class="ti ti-sun" id="side-theme-icon"></i><span id="side-theme-label">Light mode</span></button>
+      <button class="btn btn-ghost btn-sm" style="color:var(--err-fg)" onclick="logout()"><i class="ti ti-logout"></i>Sign out</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- ══ OVERVIEW ══ -->
+    <section class="page on" id="page-overview">
+      <div class="page-top">
         <div>
-          <div class="lmodal-title-v2">Manage configs in <span id="modal-sub-name" style="color:var(--accent2)">—</span></div>
-          <div class="lmodal-sub-v2">Choose the configs to include in this group</div>
+          <div class="page-title">Overview</div>
+          <div class="page-sub" id="last-update">Loading…</div>
+        </div>
+        <div class="page-top-actions">
+          <span class="badge ok"><span class="dot ok live"></span> Online</span>
+          <span class="badge neutral" id="uptime-badge">—</span>
+          <button class="btn btn-secondary btn-sm" onclick="refreshAll()"><i class="ti ti-refresh"></i></button>
+          <button class="btn btn-primary btn-sm" onclick="navTo('links')"><i class="ti ti-plus"></i> New config</button>
         </div>
       </div>
-      <div class="lmodal-search">
-        <i class="ti ti-search"></i>
-        <input type="text" id="lmodal-search-inp" placeholder="Search configs..." oninput="filterLmodal(this.value)">
+
+      <div class="grid grid-4" style="margin-bottom:var(--sp-4)">
+        <div class="metric-card">
+          <div class="rail"></div>
+          <div class="label"><i class="ti ti-plug-connected"></i> Connections</div>
+          <div class="value" id="m-conns">—</div>
+          <div class="meta"><span class="dot ok live"></span> Live</div>
+        </div>
+        <div class="metric-card rail-ok">
+          <div class="rail"></div>
+          <div class="label"><i class="ti ti-arrows-exchange"></i> Total traffic</div>
+          <div class="value" id="m-traffic">—<span class="unit">MB</span></div>
+          <div class="meta">Since boot</div>
+        </div>
+        <div class="metric-card">
+          <div class="rail"></div>
+          <div class="label"><i class="ti ti-link"></i> Active configs</div>
+          <div class="value" id="m-active">—</div>
+          <div class="meta" id="m-total">of —</div>
+        </div>
+        <div class="metric-card rail-warn">
+          <div class="rail"></div>
+          <div class="label"><i class="ti ti-folders"></i> Sub-groups</div>
+          <div class="value" id="m-subs">—</div>
+          <div class="meta">Total</div>
+        </div>
       </div>
-      <div class="lmodal-quickbar">
-        <button class="lmodal-qbtn" onclick="lmodalSelectAll(true)"><i class="ti ti-checks"></i> Select all</button>
-        <button class="lmodal-qbtn" onclick="lmodalSelectAll(false)"><i class="ti ti-x"></i> Clear all</button>
-        <span class="lmodal-count" id="lmodal-count">0 selected</span>
+
+      <div class="default-link-card">
+        <div class="default-link-label"><i class="ti ti-key"></i> Default config (unlimited)</div>
+        <div class="default-link-code" id="default-link">Loading…</div>
+        <div class="default-link-actions">
+          <button class="btn btn-primary btn-sm" onclick="copyText('default-link')"><i class="ti ti-copy"></i> Copy</button>
+          <button class="btn btn-secondary btn-sm" onclick="showQR('Default config', document.getElementById('default-link').textContent)"><i class="ti ti-qrcode"></i> QR</button>
+          <button class="btn btn-secondary btn-sm" onclick="navTo('links')"><i class="ti ti-link"></i> All configs</button>
+          <button class="btn btn-secondary btn-sm" onclick="navTo('subgroups')"><i class="ti ti-folders"></i> Sub-groups</button>
+        </div>
       </div>
-    </div>
-    <div class="lmodal-list" id="modal-links-body">Loading...</div>
-    <div class="lmodal-footer">
-      <div class="lmodal-footer-info"><i class="ti ti-info-circle"></i> Changes apply immediately</div>
-      <div class="lmodal-footer-btns">
-        <button class="btn btn-o" onclick="closeModal('modal-links')">Close</button>
-        <button class="btn btn-p" id="modal-save-btn" onclick="saveSubLinks()"><i class="ti ti-check"></i> Save</button>
+
+      <div class="grid grid-3-1" style="margin-bottom:var(--sp-4)">
+        <div class="card">
+          <div class="row" style="justify-content:space-between;margin-bottom:var(--sp-3)">
+            <div style="font-size:var(--fs-13);font-weight:600">Hourly traffic</div>
+            <div class="badge neutral">MB</div>
+          </div>
+          <div class="chart-wrap"><canvas id="chart-hourly"></canvas></div>
+        </div>
+        <div class="card">
+          <div style="font-size:var(--fs-13);font-weight:600;margin-bottom:var(--sp-3)">Distribution</div>
+          <div class="chart-wrap" style="height:200px"><canvas id="chart-dist"></canvas></div>
+        </div>
       </div>
-    </div>
-  </div>
+
+      <div class="grid grid-2">
+        <div class="card">
+          <div style="font-size:var(--fs-13);font-weight:600;margin-bottom:var(--sp-3)">Service status</div>
+          <div class="list-row" style="padding:10px 0"><div class="ico"><i class="ti ti-shield-check"></i></div><div class="txt"><div class="ttl">UUID auth</div><div class="sub">Strict</div></div><span class="badge ok">On</span></div>
+          <div class="list-row" style="padding:10px 0"><div class="ico"><i class="ti ti-circle-check"></i></div><div class="txt"><div class="ttl">VLESS / WS tunnel</div><div class="sub">Active</div></div><span class="badge ok">On</span></div>
+          <div class="list-row" style="padding:10px 0"><div class="ico"><i class="ti ti-bolt"></i></div><div class="txt"><div class="ttl">XHTTP Ultra</div><div class="sub">All modes</div></div><span class="badge ok">On</span></div>
+          <div class="list-row" style="padding:10px 0"><div class="ico"><i class="ti ti-folders"></i></div><div class="txt"><div class="ttl">Sub-groups</div><div class="sub">v12</div></div><span class="badge ok">On</span></div>
+          <div class="list-row" style="padding:10px 0"><div class="ico"><i class="ti ti-clock"></i></div><div class="txt"><div class="ttl">Uptime</div><div class="sub" id="uptime-inline">—</div></div></div>
+        </div>
+        <div class="card">
+          <div style="font-size:var(--fs-13);font-weight:600;margin-bottom:var(--sp-3)">Configs at a glance</div>
+          <div id="overview-configs">—</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ LINKS ══ -->
+    <section class="page" id="page-links">
+      <div class="page-top">
+        <div>
+          <div class="page-title">Configs</div>
+          <div class="page-sub">Create, edit and inspect access tokens.</div>
+        </div>
+        <div class="page-top-actions">
+          <span class="badge neutral" id="badge-links">0 configs</span>
+        </div>
+      </div>
+
+      <div class="create-panel">
+        <div style="font-size:var(--fs-14);font-weight:600;margin-bottom:var(--sp-4)">New config</div>
+        <div class="create-grid">
+          <div class="create-col">
+            <div class="field">
+              <label class="field-label" for="nl-label">Label</label>
+              <input class="input" id="nl-label" placeholder="e.g. Ali — main phone">
+            </div>
+            <div class="field">
+              <label class="field-label" for="nl-protocol">Protocol</label>
+              <select class="select" id="nl-protocol">
+                <option value="vless-ws">VLESS / WebSocket</option>
+                <option value="xhttp-packet-up">XHTTP — packet-up</option>
+                <option value="xhttp-stream-up">XHTTP — stream-up</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="field-label" for="nl-fp">Fingerprint (uTLS)</label>
+              <select class="select" id="nl-fp">
+                <option value="chrome" selected>chrome</option>
+                <option value="firefox">firefox</option>
+                <option value="safari">safari</option>
+                <option value="ios">ios</option>
+                <option value="android">android</option>
+                <option value="edge">edge</option>
+                <option value="360">360</option>
+                <option value="qq">qq</option>
+                <option value="random">random</option>
+                <option value="randomized">randomized</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="field-label" for="nl-alpn">ALPN (blank = default)</label>
+              <input class="input" id="nl-alpn" placeholder="h2,http/1.1">
+            </div>
+          </div>
+          <div class="create-col">
+            <div class="field">
+              <label class="field-label" for="nl-sub">Sub-group</label>
+              <select class="select" id="nl-sub"><option value="">— none —</option></select>
+            </div>
+            <div class="field">
+              <label class="field-label" for="nl-val">Quota</label>
+              <div class="row" style="flex-wrap:nowrap">
+                <input class="input" id="nl-val" placeholder="0 = unlimited" style="flex:1">
+                <select class="select" id="nl-unit" style="width:90px;flex-shrink:0"><option>GB</option><option selected>MB</option></select>
+              </div>
+              <div class="chip-row" id="quota-chips">
+                <button class="chip chip-sm" data-quota="0,GB" onclick="setQuota(this)">Unlimited</button>
+                <button class="chip chip-sm" data-quota="500,MB" onclick="setQuota(this)">500 MB</button>
+                <button class="chip chip-sm is-active" data-quota="1,GB" onclick="setQuota(this)">1 GB</button>
+                <button class="chip chip-sm" data-quota="5,GB" onclick="setQuota(this)">5 GB</button>
+                <button class="chip chip-sm" data-quota="10,GB" onclick="setQuota(this)">10 GB</button>
+              </div>
+            </div>
+            <div class="field">
+              <label class="field-label" for="nl-exp">Expiry (days, 0 = never)</label>
+              <input class="input" id="nl-exp" type="number" min="0" placeholder="30">
+              <div class="chip-row" id="exp-chips">
+                <button class="chip chip-sm" data-exp="0" onclick="setExpiry(this)">Never</button>
+                <button class="chip chip-sm" data-exp="7" onclick="setExpiry(this)">7d</button>
+                <button class="chip chip-sm is-active" data-exp="30" onclick="setExpiry(this)">30d</button>
+                <button class="chip chip-sm" data-exp="90" onclick="setExpiry(this)">90d</button>
+              </div>
+            </div>
+            <div class="row" style="flex-wrap:nowrap;gap:var(--sp-3)">
+              <div class="field" style="flex:1">
+                <label class="field-label" for="nl-port">Port</label>
+                <input class="input" id="nl-port" type="number" min="1" max="65535" value="443">
+              </div>
+              <div class="field" style="flex:1">
+                <label class="field-label" for="nl-ip">IP limit</label>
+                <input class="input" id="nl-ip" type="number" min="0" value="0" placeholder="0 = ∞">
+              </div>
+            </div>
+            <div class="field">
+              <label class="field-label" for="nl-speed">Speed limit (Mbps, 0 = ∞)</label>
+              <input class="input" id="nl-speed" type="number" min="0" value="0">
+              <div class="chip-row" id="speed-chips">
+                <button class="chip chip-sm is-active" data-speed="0" onclick="setSpeed(this)">∞</button>
+                <button class="chip chip-sm" data-speed="1" onclick="setSpeed(this)">1</button>
+                <button class="chip chip-sm" data-speed="5" onclick="setSpeed(this)">5</button>
+                <button class="chip chip-sm" data-speed="10" onclick="setSpeed(this)">10</button>
+                <button class="chip chip-sm" data-speed="25" onclick="setSpeed(this)">25</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="create-foot">
+          <div class="create-hint"><i class="ti ti-info-circle"></i> The UUID is randomly generated; only registered UUIDs can connect. Protocol cannot be changed after creation.</div>
+          <button class="btn btn-primary" onclick="createConfig()"><i class="ti ti-plus"></i> Create config</button>
+        </div>
+      </div>
+
+      <div class="filters">
+        <button class="chip is-active" data-filter="all" onclick="filterConfigs(this)">All</button>
+        <button class="chip" data-filter="active" onclick="filterConfigs(this)">Active</button>
+        <button class="chip" data-filter="expired" onclick="filterConfigs(this)">Expiring</button>
+        <button class="chip" data-filter="disabled" onclick="filterConfigs(this)">Disabled</button>
+        <div class="search-wrap">
+          <i class="ti ti-search"></i>
+          <input class="search-input" id="link-search" placeholder="Search configs…" oninput="renderConfigs()">
+        </div>
+      </div>
+
+      <div class="config-grid" id="config-grid"></div>
+      <div class="empty" id="config-empty" style="display:none">
+        <div class="ic"><i class="ti ti-link-off"></i></div>
+        <div class="ttl">No configs yet</div>
+        <div class="sub">Create your first access token above.</div>
+      </div>
+    </section>
+
+    <!-- ══ SUB-GROUPS ══ -->
+    <section class="page" id="page-subgroups">
+      <div class="page-top">
+        <div>
+          <div class="page-title">Sub-groups</div>
+          <div class="page-sub">Bundle configs behind a single public page.</div>
+        </div>
+        <div class="page-top-actions">
+          <span class="badge neutral" id="badge-subs">0 groups</span>
+          <button class="btn btn-primary btn-sm" onclick="openModal('modal-newsub')"><i class="ti ti-folder-plus"></i> New group</button>
+        </div>
+      </div>
+
+      <div class="filters">
+        <div class="search-wrap" style="margin-left:0">
+          <i class="ti ti-search"></i>
+          <input class="search-input" id="sub-search" placeholder="Search groups…" oninput="renderGroups()">
+        </div>
+      </div>
+
+      <div class="group-grid" id="group-grid"></div>
+      <div class="empty" id="group-empty" style="display:none">
+        <div class="ic"><i class="ti ti-folders"></i></div>
+        <div class="ttl">No groups yet</div>
+        <div class="sub">Create one to share configs through a public page.</div>
+      </div>
+    </section>
+
+    <!-- ══ SUBSCRIPTIONS ══ -->
+    <section class="page" id="page-subscriptions">
+      <div class="page-top">
+        <div>
+          <div class="page-title">Subscriptions</div>
+          <div class="page-sub">Plain-text subscription URLs for v2ray clients.</div>
+        </div>
+      </div>
+
+      <div class="grid grid-2" style="margin-bottom:var(--sp-4)">
+        <div class="card">
+          <div style="font-size:var(--fs-13);font-weight:600;margin-bottom:var(--sp-2)">Per-config</div>
+          <p class="text-sm text-muted" style="line-height:1.7">Each config has its own <code>/sub/{uuid}</code> URL. Copy it from the <i class="ti ti-rss"></i> button on a config card.</p>
+        </div>
+        <div class="card">
+          <div style="font-size:var(--fs-13);font-weight:600;margin-bottom:var(--sp-2)">All configs (admin)</div>
+          <p class="text-sm text-muted" style="line-height:1.7;margin-bottom:var(--sp-2)">Includes every active config on the server.</p>
+          <div class="sub-list-row">
+            <div class="info"><div class="url" id="sub-all-url">…</div></div>
+            <div class="actions">
+              <button class="btn btn-secondary btn-sm" onclick="copyText('sub-all-url')"><i class="ti ti-copy"></i></button>
+              <button class="btn btn-secondary btn-sm" onclick="window.open('/sub-all')"><i class="ti ti-external-link"></i></button>
+            </div>
+          </div>
+          <div class="create-hint" style="margin-top:8px"><i class="ti ti-info-circle"></i> This URL requires an authenticated admin session.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="font-size:var(--fs-13);font-weight:600;margin-bottom:var(--sp-3)">Group subscriptions</div>
+        <div id="sub-groups-list">Loading…</div>
+      </div>
+    </section>
+
+    <!-- ══ TRAFFIC ══ -->
+    <section class="page" id="page-traffic">
+      <div class="page-top">
+        <div>
+          <div class="page-title">Traffic</div>
+          <div class="page-sub">Bandwidth consumption over time.</div>
+        </div>
+        <div class="page-top-actions">
+          <button class="btn btn-secondary btn-sm" onclick="refreshAll()"><i class="ti ti-refresh"></i></button>
+        </div>
+      </div>
+
+      <div class="traffic-hero">
+        <div class="traffic-main">
+          <div class="label"><i class="ti ti-database"></i> Total traffic</div>
+          <div class="value" id="t-total">—<span class="unit">MB</span></div>
+        </div>
+        <div class="metric-card">
+          <div class="label">Hourly avg</div>
+          <div class="value" id="t-avg">—<span class="unit">MB</span></div>
+          <div class="meta">MB / hour</div>
+        </div>
+        <div class="metric-card rail-warn">
+          <div class="label">Peak</div>
+          <div class="value" id="t-peak">—<span class="unit">MB</span></div>
+          <div class="meta">Highest hour</div>
+        </div>
+        <div class="metric-card">
+          <div class="label">Low</div>
+          <div class="value" id="t-low">—<span class="unit">MB</span></div>
+          <div class="meta">Lowest hour</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row" style="justify-content:space-between;margin-bottom:var(--sp-3)">
+          <div style="font-size:var(--fs-13);font-weight:600">Traffic trend</div>
+          <div class="segmented"><button class="is-active">24h</button><button>7d</button><button>30d</button></div>
+        </div>
+        <div class="chart-wrap tall"><canvas id="chart-traffic"></canvas></div>
+      </div>
+    </section>
+
+    <!-- ══ CONNECTIONS ══ -->
+    <section class="page" id="page-connections">
+      <div class="page-top">
+        <div>
+          <div class="page-title">Live connections</div>
+          <div class="page-sub">Grouped by IP address, refreshed every 5s.</div>
+        </div>
+        <div class="page-top-actions">
+          <span class="badge ok" id="conn-live-badge"><span class="dot ok live"></span> —</span>
+          <button class="btn btn-secondary btn-sm" onclick="loadConnections()"><i class="ti ti-refresh"></i></button>
+        </div>
+      </div>
+
+      <div class="conn-hero">
+        <div class="metric-card">
+          <div class="label"><i class="ti ti-plug-connected"></i> Live</div>
+          <div class="value" id="ch-count">—</div>
+        </div>
+        <div class="metric-card rail-ok">
+          <div class="label"><i class="ti ti-arrows-exchange"></i> Traffic</div>
+          <div class="value" id="ch-traffic">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="label"><i class="ti ti-clock"></i> Avg duration</div>
+          <div class="value" id="ch-avgdur">—</div>
+        </div>
+        <div class="metric-card rail-warn">
+          <div class="label"><i class="ti ti-map-pin"></i> Unique IPs</div>
+          <div class="value" id="ch-uniq">—</div>
+        </div>
+      </div>
+
+      <div class="conn-grid" id="conn-grid"></div>
+      <div class="empty" id="conn-empty" style="display:none">
+        <div class="ic"><i class="ti ti-plug-off"></i></div>
+        <div class="ttl">No active connections</div>
+        <div class="sub">As soon as clients connect, they'll appear here.</div>
+      </div>
+    </section>
+
+    <!-- ══ SECURITY ══ -->
+    <section class="page" id="page-security">
+      <div class="page-top">
+        <div>
+          <div class="page-title">Security</div>
+          <div class="page-sub">Cryptography and access control in use.</div>
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="card">
+          <div style="font-size:var(--fs-13);font-weight:600;margin-bottom:var(--sp-3)">Encryption</div>
+          <div class="list-row" style="padding:10px 0"><div class="ico"><i class="ti ti-certificate"></i></div><div class="txt"><div class="ttl">TLS / HTTPS</div><div class="sub">port 443</div></div><span class="badge ok">On</span></div>
+          <div class="list-row" style="padding:10px 0"><div class="ico"><i class="ti ti-fingerprint"></i></div><div class="txt"><div class="ttl">Fingerprint</div><div class="sub">uTLS chrome spoof</div></div></div>
+          <div class="list-row" style="padding:10px 0"><div class="ico"><i class="ti ti-network"></i></div><div class="txt"><div class="ttl">Protocols</div><div class="sub">VLESS/WS + XHTTP Ultra</div></div></div>
+          <div class="list-row" style="padding:10px 0"><div class="ico"><i class="ti ti-key"></i></div><div class="txt"><div class="ttl">Password hash</div><div class="sub">SHA-256 + secret</div></div></div>
+          <div class="list-row" style="padding:10px 0"><div class="ico"><i class="ti ti-cookie"></i></div><div class="txt"><div class="ttl">Session</div><div class="sub">HttpOnly · 365 days</div></div></div>
+        </div>
+        <div class="card">
+          <div style="font-size:var(--fs-13);font-weight:600;margin-bottom:var(--sp-3)">Access control</div>
+          <div class="list-row" style="padding:10px 0"><div class="ico"><i class="ti ti-id-badge"></i></div><div class="txt"><div class="ttl">Strict UUID auth</div><div class="sub">Unknown UUID → rejected</div></div><span class="badge ok">On</span></div>
+          <div class="list-row" style="padding:10px 0"><div class="ico"><i class="ti ti-toggle-right"></i></div><div class="txt"><div class="ttl">Active toggle</div><div class="sub">Instant per-config switch</div></div><span class="badge ok">On</span></div>
+          <div class="list-row" style="padding:10px 0"><div class="ico"><i class="ti ti-gauge"></i></div><div class="txt"><div class="ttl">Quota</div><div class="sub">Bytes per config</div></div><span class="badge ok">On</span></div>
+          <div class="list-row" style="padding:10px 0"><div class="ico"><i class="ti ti-calendar-x"></i></div><div class="txt"><div class="ttl">Expiration</div><div class="sub">Per-config date</div></div><span class="badge ok">On</span></div>
+          <div class="list-row" style="padding:10px 0"><div class="ico"><i class="ti ti-lock"></i></div><div class="txt"><div class="ttl">Group password</div><div class="sub">SHA-256, optional</div></div><span class="badge ok">On</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ ACTIVITY ══ -->
+    <section class="page" id="page-logs">
+      <div class="page-top">
+        <div>
+          <div class="page-title">Activity</div>
+          <div class="page-sub">Full timeline of panel events.</div>
+        </div>
+        <div class="page-top-actions">
+          <button class="btn btn-secondary btn-sm" onclick="loadActivity()"><i class="ti ti-refresh"></i></button>
+        </div>
+      </div>
+      <div class="card"><div id="logs-list">Loading…</div></div>
+    </section>
+
+    <!-- ══ ERRORS ══ -->
+    <section class="page" id="page-errors">
+      <div class="page-top">
+        <div>
+          <div class="page-title">Errors</div>
+          <div class="page-sub">Recent runtime errors.</div>
+        </div>
+        <div class="page-top-actions">
+          <span class="badge err" id="err-badge">0</span>
+          <button class="btn btn-secondary btn-sm" onclick="refreshAll()"><i class="ti ti-refresh"></i></button>
+        </div>
+      </div>
+      <div class="card"><div id="err-list">—</div></div>
+    </section>
+
+    <!-- ══ TEST WS ══ -->
+    <section class="page" id="page-testws">
+      <div class="page-top">
+        <div>
+          <div class="page-title">WebSocket test</div>
+          <div class="page-sub">Verify that a config's UUID can reach the VLESS/WS tunnel.</div>
+        </div>
+      </div>
+      <div class="card" style="max-width:720px">
+        <div class="create-hint" style="margin-bottom:var(--sp-3)"><i class="ti ti-info-circle"></i> Only registered and active UUIDs will connect. This tests VLESS/WS only — use your client for XHTTP.</div>
+        <div class="row" style="flex-wrap:nowrap;margin-bottom:var(--sp-3)">
+          <input class="input is-mono" id="ws-uuid" placeholder="UUID of an active config" style="flex:1">
+          <button class="btn btn-primary" onclick="wsConnect()"><i class="ti ti-plug-connected"></i></button>
+          <button class="btn btn-danger" onclick="wsClose()"><i class="ti ti-plug-x"></i></button>
+        </div>
+        <div class="row" style="flex-wrap:nowrap;margin-bottom:var(--sp-3)">
+          <input class="input" id="ws-msg" placeholder="Message to send…" style="flex:1">
+          <button class="btn btn-secondary" onclick="wsSend()"><i class="ti ti-send"></i></button>
+        </div>
+        <div class="ws-log" id="ws-log"><span style="color:var(--fg-3)">Waiting for connection…</span></div>
+      </div>
+    </section>
+
+    <!-- ══ SETTINGS ══ -->
+    <section class="page" id="page-settings">
+      <div class="page-top">
+        <div>
+          <div class="page-title">Settings</div>
+          <div class="page-sub">Server info and admin password.</div>
+        </div>
+      </div>
+
+      <div class="settings-grid">
+        <div class="card">
+          <div style="font-size:var(--fs-13);font-weight:600;margin-bottom:var(--sp-3)">Server</div>
+          <div class="list-row"><div class="ico"><i class="ti ti-world"></i></div><div class="txt"><div class="ttl">Domain</div><div class="sub mono" id="set-host">—</div></div></div>
+          <div class="list-row"><div class="ico"><i class="ti ti-versions"></i></div><div class="txt"><div class="ttl">Version</div><div class="sub">v12</div></div></div>
+          <div class="list-row"><div class="ico"><i class="ti ti-brand-fastapi"></i></div><div class="txt"><div class="ttl">Stack</div><div class="sub">FastAPI · Uvicorn</div></div></div>
+          <div class="list-row"><div class="ico"><i class="ti ti-cloud"></i></div><div class="txt"><div class="ttl">Platform</div><div class="sub">Railway</div></div></div>
+          <div class="list-row"><div class="ico"><i class="ti ti-device-floppy"></i></div><div class="txt"><div class="ttl">Storage</div><div class="sub mono">/data/gateway_state.json</div></div></div>
+        </div>
+
+        <div class="card">
+          <div style="font-size:var(--fs-13);font-weight:600;margin-bottom:var(--sp-3)">Change password</div>
+          <div class="pw-form">
+            <div class="field">
+              <label class="field-label" for="cp-current">Current password</label>
+              <div class="input-wrap">
+                <input class="input" id="cp-current" type="password" placeholder="••••••••">
+                <button class="trail" onclick="togglePw('cp-current', this)" aria-label="Show"><i class="ti ti-eye"></i></button>
+              </div>
+            </div>
+            <div class="field">
+              <label class="field-label" for="cp-new">New password</label>
+              <div class="input-wrap">
+                <input class="input" id="cp-new" type="password" placeholder="At least 4 characters" oninput="updatePwStrength(this.value)">
+                <button class="trail" onclick="togglePw('cp-new', this)" aria-label="Show"><i class="ti ti-eye"></i></button>
+              </div>
+              <div class="pw-strength" id="pw-strength"><span></span><span></span><span></span><span></span></div>
+              <div class="pw-reqs">
+                <span class="pw-req" id="req-len">4+ chars</span>
+                <span class="pw-req" id="req-num">contains digit</span>
+                <span class="pw-req" id="req-case">mixed case</span>
+                <span class="pw-req" id="req-long">8+ chars</span>
+              </div>
+            </div>
+            <div class="field">
+              <label class="field-label" for="cp-confirm">Confirm new password</label>
+              <div class="input-wrap">
+                <input class="input" id="cp-confirm" type="password" placeholder="Repeat new password">
+                <button class="trail" onclick="togglePw('cp-confirm', this)" aria-label="Show"><i class="ti ti-eye"></i></button>
+              </div>
+            </div>
+            <button class="btn btn-primary" style="align-self:flex-start" onclick="changePassword()"><i class="ti ti-shield-check"></i> Save password</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ SUPPORT ══ -->
+    <section class="page" id="page-support">
+      <div class="page-top">
+        <div>
+          <div class="page-title">Support</div>
+          <div class="page-sub">Where to reach the maintainers.</div>
+        </div>
+      </div>
+      <div class="support-tiles" style="max-width:640px">
+        <a class="support-tile" href="https://t.me/X4GHUB" target="_blank" rel="noopener">
+          <div class="ico"><i class="ti ti-speakerphone"></i></div>
+          <div><div class="t">Telegram</div><div class="v">t.me/X4GHUB</div></div>
+        </a>
+        <a class="support-tile" href="https://github.com/x4gpanell" target="_blank" rel="noopener">
+          <div class="ico"><i class="ti ti-brand-github"></i></div>
+          <div><div class="t">GitHub</div><div class="v">github.com/x4gpanell</div></div>
+        </a>
+      </div>
+    </section>
+
+  </main>
 </div>
-<div class="modal-bg" role="dialog" aria-modal="true" id="modal-create-sub">
-  <div class="modal-v2">
-    <div class="modal-v2-head">
-      <button class="modal-v2-close" onclick="closeModal('modal-create-sub')"><i class="ti ti-x"></i></button>
-      <div class="modal-v2-icon"><i class="ti ti-folder-plus"></i></div>
-      <div class="modal-v2-title">Create group</div>
-      <div class="modal-v2-sub">Create a separate public page to share configs</div>
-    </div>
-    <div class="modal-v2-body">
-      <div class="modal-v2-field">
-        <label><i class="ti ti-tag"></i> Group name</label>
-        <input class="modal-v2-input" id="ns-name" placeholder="e.g. Telegram channel">
-      </div>
-      <div class="modal-v2-field">
-        <label><i class="ti ti-align-left"></i> Description (optional)</label>
-        <input class="modal-v2-input" id="ns-desc" placeholder="Short description of this group">
-      </div>
-      <div class="modal-v2-field" style="margin-bottom:0">
-        <label><i class="ti ti-lock"></i> Public page password (optional)</label>
-        <input class="modal-v2-input" id="ns-pw" type="password" placeholder="Leave empty = no password">
-      </div>
-      <div class="cl" style="margin-top:14px"><i class="ti ti-info-circle"></i><span>The public page for this group will be available online at a unique link.</span></div>
-      <div class="modal-v2-footer">
-        <button class="btn btn-o" onclick="closeModal('modal-create-sub')" style="flex:.6">Cancel</button>
-        <button class="btn btn-pur" onclick="createSub()"><i class="ti ti-folder-plus"></i> Create group</button>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="modal-bg" role="dialog" aria-modal="true" id="modal-edit-link">
+
+<!-- ══ Modals ══ -->
+<div class="modal-backdrop" id="modal-edit">
   <div class="modal">
-    <button class="modal-close" onclick="closeModal('modal-edit-link')"><i class="ti ti-x"></i></button>
-    <div class="modal-title"><i class="ti ti-edit"></i> Edit config</div>
-    <input type="hidden" id="el-uuid">
-    <div class="fg" style="margin-bottom:13px"><label>Title</label><input class="fi" id="el-label" style="width:100%"></div>
-    <div class="form-row" style="margin-bottom:13px">
-      <div class="fg" style="flex:1"><label>Quota (0 = Unlimited)</label><input class="fi" id="el-val" type="number" min="0" step="0.1" style="width:100%"></div>
-      <div class="fg"><label>Unit</label><select class="fs" id="el-unit"><option value="GB">GB</option><option value="MB">MB</option></select></div>
-    </div>
-    <div class="fg" style="margin-bottom:13px"><label>Expiry (days from now, 0 = no change / unlimited)</label><input class="fi" id="el-exp" type="number" min="0" step="1" style="width:100%"></div>
-    <div class="fg" style="margin-bottom:13px"><label>Note</label><input class="fi" id="el-note" style="width:100%"></div>
-    <div class="form-row" style="margin-bottom:13px">
-      <div class="fg" style="flex:1"><label>Fingerprint (uTLS)</label>
-        <select class="fs" id="el-fp" style="width:100%">
-          <option value="chrome">chrome</option>
-          <option value="firefox">firefox</option>
-          <option value="safari">safari</option>
-          <option value="ios">ios</option>
-          <option value="android">android</option>
-          <option value="edge">edge</option>
-          <option value="360">360</option>
-          <option value="qq">qq</option>
-          <option value="random">random</option>
-          <option value="randomized">randomized</option>
-        </select>
-      </div>
-      <div class="fg" style="flex:1"><label>ALPN (Empty = Default)</label><input class="fi" id="el-alpn" placeholder="e.g.: h2,http/1.1" style="width:100%"></div>
-    </div>
-    <div class="form-row" style="margin-bottom:16px">
-      <div class="fg" style="flex:1"><label>Connection port</label><input class="fi" id="el-port" type="number" min="1" max="65535" style="width:100%"></div>
-      <div class="fg" style="flex:1"><label>IP limit (0 = Unlimited)</label><input class="fi" id="el-iplimit" type="number" min="0" step="1" style="width:100%"></div>
-    </div>
-    <div class="form-row" style="margin-bottom:16px">
-      <div class="fg" style="flex:1"><label>Speed limit (0 = Unlimited)</label><input class="fi" id="el-speed" type="number" min="0" step="0.5" style="width:100%"></div>
-      <div class="fg"><label>Unit</label><select class="fs" id="el-speed-unit"><option value="MBIT">Mbps</option><option value="KB">KB/s</option><option value="MB">MB/s</option></select></div>
-    </div>
-    <div class="cl"><i class="ti ti-info-circle"></i><span>To keep the current expiry, leave the expiry field at 0.</span></div>
-    <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn btn-o" onclick="closeModal('modal-edit-link')">Cancel</button>
-      <button class="btn btn-p" onclick="saveEditLink()"><i class="ti ti-check"></i> Save changes</button>
-    </div>
-  </div>
-</div>
-<div class="mob-top">
-  <div class="ml">
-    <div class="mob-logo"><svg viewBox="0 0 32 32" role="img" aria-label="Lumen Gate"><defs><linearGradient id="lgM" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--accent)"/><stop offset="1" style="stop-color:var(--purple)"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="url(#lgM)"/><path d="M6 17h5l3-8 4 14 3-6h5" fill="none" stroke="var(--on-accent)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-    <span class="mob-title">Lumen Gate</span>
-  </div>
-  <div class="mob-right">
-    <button class="theme-mob" id="theme-mob-btn" onclick="toggleTheme()"><i class="ti ti-sun" id="theme-mob-icon"></i></button>
-    <button class="menu-btn" id="open-sb"><i class="ti ti-menu-2"></i></button>
-  </div>
-</div>
-<div class="overlay" id="overlay"></div>
-<aside class="sidebar" id="sb">
-  <button class="sb-close" id="close-sb"><i class="ti ti-x"></i></button>
-  <div class="logo">
-    <div class="logo-img"><svg viewBox="0 0 32 32" role="img" aria-label="Lumen Gate"><defs><linearGradient id="lgS" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--accent)"/><stop offset="1" style="stop-color:var(--purple)"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="url(#lgS)"/><path d="M6 17h5l3-8 4 14 3-6h5" fill="none" stroke="var(--on-accent)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-    <div><div class="logo-name">Lumen Gate</div><div class="logo-sub">v11</div></div>
-  </div>
-  <div class="nav-wrap" role="navigation" aria-label="Primary">
-    <div class="nav-sec">Panel</div>
-    <div tabindex="0" role="button" class="nav-it on" data-pg="overview"><i class="ti ti-layout-dashboard"></i> Dashboard</div>
-    <div tabindex="0" role="button" class="nav-it" data-pg="links"><i class="ti ti-link-plus"></i> Configs <span class="nav-badge" id="links-nb">0</span></div>
-    <div tabindex="0" role="button" class="nav-it" data-pg="subgroups"><i class="ti ti-folders"></i> Sub groups <span class="nav-badge" id="subs-nb">0</span></div>
-    <div tabindex="0" role="button" class="nav-it" data-pg="subscriptions"><i class="ti ti-rss"></i> Subscription</div>
-    <div tabindex="0" role="button" class="nav-it" data-pg="traffic"><i class="ti ti-chart-area"></i> Traffic</div>
-    <div tabindex="0" role="button" class="nav-it" data-pg="connections"><i class="ti ti-plug-connected"></i> Connections <span class="nav-badge" id="conns-nb">0</span></div>
-    <div class="nav-sec">System</div>
-    <div tabindex="0" role="button" class="nav-it" data-pg="security"><i class="ti ti-shield-lock"></i> Security</div>
-    <div tabindex="0" role="button" class="nav-it" data-pg="logs"><i class="ti ti-history"></i> Activity log</div>
-    <div tabindex="0" role="button" class="nav-it" data-pg="errors"><i class="ti ti-alert-triangle"></i> Errors</div>
-    <div tabindex="0" role="button" class="nav-it" data-pg="testws"><i class="ti ti-wifi"></i> WebSocket test</div>
-    <div tabindex="0" role="button" class="nav-it" data-pg="settings"><i class="ti ti-settings"></i> Settings</div>
-    <div tabindex="0" role="button" class="nav-it" data-pg="support"><i class="ti ti-headset"></i> Support</div>
-  </div>
-  <div class="sb-foot">
-    <button class="theme-btn" onclick="toggleTheme()"><i class="ti ti-moon" id="theme-icon"></i> <span id="theme-label">Light theme</span></button>
-    
-    <button class="logout-btn" id="logout-btn"><i class="ti ti-logout"></i> Sign out</button>
-  </div>
-</aside>
-<main class="main">
-<section class="pg on" id="pg-overview">
-  <div class="topbar">
-    <div><div class="tb-title"><i class="ti ti-layout-dashboard"></i> Dashboard</div><div class="tb-sub" id="last-upd">Loading...</div></div>
-    <div class="tb-right">
-      <span class="badge bg-green"><span class="dot dg pulse"></span> Active</span>
-      <span class="badge bg-blue" id="uptime-badge">—</span>
-      <button class="btn btn-p btn-sm" onclick="refreshAll()"><i class="ti ti-refresh"></i> Refresh</button>
-    </div>
-  </div>
-  <div class="metrics">
-    <div class="metric"><div class="m-icon"><i class="ti ti-plug-connected"></i></div><div class="m-label">Live connections</div><div class="m-val" id="m-conns">—</div><div class="m-sub"><span class="dot dg pulse"></span> WebSocket / XHTTP Live</div></div>
-    <div class="metric"><div class="m-icon"><i class="ti ti-transfer"></i></div><div class="m-label">Total traffic</div><div class="m-val" id="m-traffic">—<span class="m-unit">MB</span></div><div class="m-sub">since startup</div></div>
-    <div class="metric suc"><div class="m-icon suc"><i class="ti ti-link"></i></div><div class="m-label">Active configs</div><div class="m-val" id="m-alinks">—</div><div class="m-sub" id="m-lsub">of total</div></div>
-    <div class="metric pur"><div class="m-icon pur"><i class="ti ti-folders"></i></div><div class="m-label">Sub groups</div><div class="m-val" id="m-subs">—</div><div class="m-sub">Active</div></div>
-  </div>
-  <div class="vless-box">
-    <div class="vl-header">
-      <div class="vl-title"><i class="ti ti-link"></i> Default link (no limits)</div>
-      <span class="badge bg-blue"><span class="dot db"></span> TLS 443 · WS</span>
-    </div>
-    <div class="vl-code" id="vless-main">Fetching...</div>
-    <div class="vl-actions">
-      <button class="btn btn-p" onclick="cpText('vless-main')"><i class="ti ti-copy"></i> Copy</button>
-      <button class="btn btn-g" onclick="qrFor('vless-main')"><i class="ti ti-qrcode"></i> QR</button>
-      <button class="btn btn-o" onclick="navTo('links')"><i class="ti ti-link-plus"></i> Limited configs</button>
-      <button class="btn btn-pur" onclick="navTo('subgroups')"><i class="ti ti-folders"></i> Sub groups</button>
-    </div>
-  </div>
-  <div class="g3">
-    <div class="card"><div class="card-title"><i class="ti ti-chart-area"></i> Hourly traffic (MB)</div><div class="ch"><canvas id="ch1"></canvas></div></div>
-    <div class="card"><div class="card-title"><i class="ti ti-chart-donut"></i> Distribution</div><div class="ch-sm"><canvas id="ch2"></canvas></div></div>
-  </div>
-  <div class="g2">
-    <div class="card">
-      <div class="card-title"><i class="ti ti-activity"></i> Service status</div>
-      <div class="sr"><span class="sr-k"><i class="ti ti-shield-check"></i> UUID Auth</span><span class="sr-v" style="color:var(--green-t)">● Active · strict</span></div>
-      <div class="sr"><span class="sr-k"><i class="ti ti-circle-check"></i> VLESS / WS Tunnel</span><span class="sr-v" style="color:var(--green-t)">● Active</span></div>
-      <div class="sr"><span class="sr-k"><i class="ti ti-bolt"></i> Siz10a XHTTP Ultra</span><span class="sr-v" style="color:var(--green-t)">● Active · 3 mode</span></div>
-      <div class="sr"><span class="sr-k"><i class="ti ti-folders"></i> Sub Groups</span><span class="sr-v" style="color:var(--green-t)">● Active v9</span></div>
-      <div class="sr"><span class="sr-k"><i class="ti ti-rss"></i> Subscription API</span><span class="sr-v" style="color:var(--green-t)">● Active</span></div>
-      <div class="sr"><span class="sr-k"><i class="ti ti-clock"></i> Uptime</span><span class="sr-v" id="uptime-inline">—</span></div>
-      <div class="sr" style="flex-direction:column;align-items:flex-start;gap:4px">
-        <div style="width:100%;display:flex;justify-content:space-between"><span class="sr-k"><i class="ti ti-gauge"></i> Relative load</span><span class="sr-v" id="bw-pct">—%</span></div>
-        <div class="spbar" style="width:100%"><div class="spfill" id="bw-bar" style="width:0%"></div></div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title"><i class="ti ti-list"></i> Config summary <span class="ml-auto badge bg-blue" id="lsummary-badge">0</span></div>
-      <div id="lsummary">—</div>
-    </div>
-  </div>
-  <div class="dash-footer">
-    <span class="df-text">Gateway v11 · Railway</span>
-    
-    
-  </div>
-</section>
-<section class="pg" id="pg-links">
-  <div class="topbar">
-    <div><div class="tb-title"><i class="ti ti-link-plus"></i> Configs</div><div class="tb-sub">Create and manage configs with quotas, expiry and groups</div></div>
-    <div class="tb-right"><span class="badge bg-blue" id="links-pg-cnt">0 configs</span></div>
-  </div>
-  <div class="create-panel">
-    <div class="cp-head">
-      <div class="cp-head-icon"><i class="ti ti-square-rounded-plus"></i></div>
-      <div class="cp-head-text">
-        <div class="cp-head-title">Create a new config</div>
-        <div class="cp-head-sub">UUID Random · Choose a quota, expiry and protocol</div>
-      </div>
-    </div>
-    <div class="cp-body">
-      <div class="cp-row">
-        <div class="cp-block">
-          <div class="cp-block-label"><i class="ti ti-id-badge-2"></i> Config name</div>
-          <input class="cp-input-full" id="nl-label" placeholder="e.g. Ali (phone)">
-          <div class="cp-mini-row">
-            <input class="cp-input-full" id="nl-note" placeholder="Note (optional)">
-          </div>
-        </div>
-        <div class="cp-block">
-          <div class="cp-block-label"><i class="ti ti-folders"></i> Sub group and expiry</div>
-          <select class="cp-input-full fs" id="nl-sub"><option value="">— No group —</option></select>
-          <div class="cp-mini-row">
-            <input class="cp-input-full" id="nl-exp" type="number" min="0" step="1" placeholder="Expiry (days) · 0 = Unlimited">
-          </div>
-          <div tabindex="0" role="button" class="chip-row" id="exp-chips">
-            <span tabindex="0" role="button" class="chip" onclick="setExpiry(0,this)">Unlimited</span>
-            <span tabindex="0" role="button" class="chip" onclick="setExpiry(7,this)">7 days</span>
-            <span tabindex="0" role="button" class="chip active" onclick="setExpiry(30,this)">30 days</span>
-            <span tabindex="0" role="button" class="chip" onclick="setExpiry(90,this)">90 days</span>
-          </div>
-        </div>
-      </div>
-      <div class="cp-block mb16">
-        <div class="cp-block-label"><i class="ti ti-gauge"></i> Traffic quota</div>
-        <div class="cp-quota-inputs">
-          <input class="cp-input-full" id="nl-val" type="number" min="0" step="0.1" placeholder="0 = Unlimited">
-          <select class="cp-input-full fs" id="nl-unit"><option value="GB">GB</option><option value="MB" selected>MB</option></select>
-        </div>
-        <div tabindex="0" role="button" class="chip-row" id="quota-chips">
-          <span tabindex="0" role="button" class="chip" onclick="setQuota(0,'GB',this)">Unlimited</span>
-          <span tabindex="0" role="button" class="chip" onclick="setQuota(500,'MB',this)">500 MB</span>
-          <span tabindex="0" role="button" class="chip active" onclick="setQuota(1,'GB',this)">1 GB</span>
-          <span tabindex="0" role="button" class="chip" onclick="setQuota(5,'GB',this)">5 GB</span>
-          <span tabindex="0" role="button" class="chip" onclick="setQuota(10,'GB',this)">10 GB</span>
-          <span tabindex="0" role="button" class="chip" onclick="setQuota(50,'GB',this)">50 GB</span>
-        </div>
-      </div>
-      <div class="cp-block mb16">
-        <div class="cp-block-label"><i class="ti ti-plug-connected"></i> Transport protocol</div>
-        <select id="nl-proto" style="display:none">
-          <option value="vless-ws">VLESS / WebSocket</option>
-          <option value="xhttp-packet-up">XHTTP Ultra · packet-up</option>
-          <option value="xhttp-stream-up">XHTTP Ultra · stream-up</option>
-        </select>
-        <div class="proto-cards">
-          <div tabindex="0" role="button" class="proto-card active" data-val="vless-ws" onclick="selectProto('vless-ws',this)">
-            <div tabindex="0" role="button" class="proto-card-check"><i class="ti ti-check"></i></div>
-            <div tabindex="0" role="button" class="proto-card-icon"><i class="ti ti-link"></i></div>
-            <div tabindex="0" role="button" class="proto-card-title">VLESS / WS</div>
-            <div tabindex="0" role="button" class="proto-card-desc">Stable, all-purpose</div>
-          </div>
-          <div tabindex="0" role="button" class="proto-card" data-val="xhttp-packet-up" onclick="selectProto('xhttp-packet-up',this)">
-            <div tabindex="0" role="button" class="proto-card-check"><i class="ti ti-check"></i></div>
-            <div tabindex="0" role="button" class="proto-card-icon"><i class="ti ti-bolt"></i></div>
-            <div tabindex="0" role="button" class="proto-card-title">XHTTP · packet-up</div>
-            <div tabindex="0" role="button" class="proto-card-desc">Compatible with CDN</div>
-          </div>
-          <div tabindex="0" role="button" class="proto-card" data-val="xhttp-stream-up" onclick="selectProto('xhttp-stream-up',this)">
-            <div tabindex="0" role="button" class="proto-card-check"><i class="ti ti-check"></i></div>
-            <div tabindex="0" role="button" class="proto-card-icon"><i class="ti ti-rocket"></i></div>
-            <div tabindex="0" role="button" class="proto-card-title">XHTTP · stream-up</div>
-            <div tabindex="0" role="button" class="proto-card-desc">Lower latency</div>
-          </div>
-        </div>
-      </div>
-      <div class="cp-row">
-        <div class="cp-block">
-          <div class="cp-block-label"><i class="ti ti-fingerprint"></i> Fingerprint (uTLS)</div>
-          <select class="cp-input-full fs" id="nl-fp">
-            <option value="chrome" selected>chrome</option>
-            <option value="firefox">firefox</option>
-            <option value="safari">safari</option>
-            <option value="ios">ios</option>
-            <option value="android">android</option>
-            <option value="edge">edge</option>
-            <option value="360">360</option>
-            <option value="qq">qq</option>
-            <option value="random">random</option>
-            <option value="randomized">randomized</option>
-          </select>
-        </div>
-        <div class="cp-block">
-          <div class="cp-block-label"><i class="ti ti-antenna-bars-5"></i> ALPN</div>
-          <select class="cp-input-full fs" id="nl-alpn-preset" onchange="onAlpnPresetChange()">
-            <option value="">Protocol default</option>
-            <option value="h2,http/1.1">h2,http/1.1</option>
-            <option value="http/1.1">http/1.1</option>
-            <option value="h2">h2</option>
-            <option value="__custom__">Custom...</option>
-          </select>
-          <div class="cp-mini-row">
-            <input class="cp-input-full" id="nl-alpn" placeholder="Custom value ALPN" style="display:none">
-          </div>
-        </div>
-      </div>
-      <div class="cp-row mb16">
-        <div class="cp-block">
-          <div class="cp-block-label"><i class="ti ti-route"></i> Connection port</div>
-          <input class="cp-input-full" id="nl-port" type="number" min="1" max="65535" placeholder="443" value="443">
-        </div>
-        <div class="cp-block">
-          <div class="cp-block-label"><i class="ti ti-users"></i> IP limit / concurrent users</div>
-          <input class="cp-input-full" id="nl-iplimit" type="number" min="0" step="1" placeholder="0 = Unlimited" value="0">
-          <div tabindex="0" role="button" class="chip-row" id="iplimit-chips">
-            <span tabindex="0" role="button" class="chip active" onclick="setIpLimit(0,this)">Unlimited</span>
-            <span tabindex="0" role="button" class="chip" onclick="setIpLimit(1,this)">1 user</span>
-            <span tabindex="0" role="button" class="chip" onclick="setIpLimit(2,this)">2 users</span>
-            <span tabindex="0" role="button" class="chip" onclick="setIpLimit(5,this)">5 users</span>
-          </div>
-        </div>
-      </div>
-      <div class="cp-row mb16">
-        <div class="cp-block" style="flex:1">
-          <div class="cp-block-label"><i class="ti ti-gauge"></i> Speed limit</div>
-          <div class="form-row">
-            <input class="cp-input-full" id="nl-speed" type="number" min="0" step="0.5" placeholder="0 = Unlimited" value="0" style="flex:1">
-            <select class="fs" id="nl-speed-unit" style="flex:0 0 100px">
-              <option value="MBIT" selected>Mbps</option>
-              <option value="KB">KB/s</option>
-              <option value="MB">MB/s</option>
-            </select>
-          </div>
-          <div tabindex="0" role="button" class="chip-row" id="speed-chips">
-            <span tabindex="0" role="button" class="chip active" onclick="setSpeedLimit(0,this)">Unlimited</span>
-            <span tabindex="0" role="button" class="chip" onclick="setSpeedLimit(1,this)">1 Mbps</span>
-            <span tabindex="0" role="button" class="chip" onclick="setSpeedLimit(5,this)">5 Mbps</span>
-            <span tabindex="0" role="button" class="chip" onclick="setSpeedLimit(10,this)">10 Mbps</span>
-            <span tabindex="0" role="button" class="chip" onclick="setSpeedLimit(25,this)">25 Mbps</span>
-          </div>
-        </div>
-      </div>
-      <div class="cp-footer">
-        <div class="cp-footer-note"><i class="ti ti-info-circle"></i> UUID Generated randomly · Only registered UUIDs may connect · The protocol cannot be changed after creation.</div>
-        <button class="cp-submit-btn" onclick="createLink()"><i class="ti ti-link-plus"></i> Create config</button>
-      </div>
-    </div>
-  </div>
-  <div class="cfg-grid" id="links-grid"></div>
-  <div class="empty" id="links-empty" style="display:none"><i class="ti ti-link-off"></i><p>No configs yet</p></div>
-</section>
-<section class="pg" id="pg-subgroups">
-  <div class="topbar">
-    <div><div class="tb-title"><i class="ti ti-folders"></i> Sub groups</div><div class="tb-sub">Each group has its own public page with its configs</div></div>
-    <div class="tb-right">
-      <span class="badge bg-purple" id="subs-pg-cnt">0 groups</span>
-      <button class="btn btn-pur" onclick="openModal('modal-create-sub')"><i class="ti ti-folder-plus"></i> New group</button>
-    </div>
-  </div>
-  <div class="subs-toolbar">
-    <div class="subs-search">
-      <i class="ti ti-search"></i>
-      <input type="text" id="subs-search-inp" placeholder="Search groups..." oninput="filterSubs(this.value)">
-    </div>
-  </div>
-  <div class="sub-grid" id="subs-grid">
-    <div class="subs-empty-v2"><div class="subs-empty-v2-icon"><i class="ti ti-folders"></i></div><div class="subs-empty-v2-title">No groups yet</div><div class="subs-empty-v2-sub">Create a group to organize your configs</div></div>
-  </div>
-</section>
-<section class="pg" id="pg-subscriptions">
-  <div class="topbar"><div><div class="tb-title"><i class="ti ti-rss"></i> Subscription</div><div class="tb-sub">Subscription links for apps like v2ray</div></div></div>
-  <div class="g2">
-    <div class="card">
-      <div class="card-title"><i class="ti ti-rss"></i> Single subscription (each config)</div>
-      <p style="font-size:11.5px;color:var(--t3);line-height:1.8;margin-bottom:12px">Every config has its own subscription URL. On the config card, click the <i class="ti ti-rss"></i> icon.</p>
-    </div>
-    <div class="card">
-      <div class="card-title"><i class="ti ti-database"></i> Full subscription (admin)</div>
-      <p style="font-size:11.5px;color:var(--t3);line-height:1.8;margin-bottom:4px">Includes all active configs.</p>
-      <div class="sub-box"><span class="sub-url" id="sub-all-url">Fetching...</span><div style="display:flex;gap:6px"><button class="btn btn-sm btn-g" onclick="cpSubAll()"><i class="ti ti-copy"></i></button><button class="btn btn-sm btn-g" onclick="window.open(location.protocol+'//'+location.host+'/sub-all')"><i class="ti ti-external-link"></i></button></div></div>
-      <div class="cl amber" style="margin-top:11px"><i class="ti ti-alert-triangle"></i><span>This URL only works in a browser that is signed in to the panel (requires the session cookie).</span></div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title"><i class="ti ti-folders"></i> Group subscription links</div>
-    <div id="sub-groups-list">Loading...</div>
-  </div>
-</section>
-<section class="pg" id="pg-traffic">
-  <div class="topbar">
-    <div><div class="tb-title"><i class="ti ti-chart-area"></i> Traffic</div><div class="tb-sub">Bandwidth usage analytics and monitoring</div></div>
-    <div class="tb-right"><button class="btn btn-p btn-sm" onclick="refreshAll()"><i class="ti ti-refresh"></i> Refresh</button></div>
-  </div>
-
-  <div class="traf-hero">
-    <div class="traf-main-stat">
-      <div class="traf-main-label"><i class="ti ti-database"></i> Total traffic used</div>
-      <div class="traf-main-val" id="t-traffic">—<span>MB</span></div>
-      <div class="traf-trend up" id="t-trend"><i class="ti ti-trending-up"></i> <span id="t-trend-val">—</span></div>
-    </div>
-    <div class="traf-mini">
-      <div class="traf-mini-top"><div class="traf-mini-icon"><i class="ti ti-arrow-up-right"></i></div><span class="traf-mini-label">Hourly average</span></div>
-      <div><div class="traf-mini-val" id="t-avg">—</div><div class="traf-mini-sub">MB per hour</div></div>
-    </div>
-    <div class="traf-mini">
-      <div class="traf-mini-top"><div class="traf-mini-icon pk"><i class="ti ti-chart-bar"></i></div><span class="traf-mini-label">Peak usage</span></div>
-      <div><div class="traf-mini-val" id="t-peak">—</div><div class="traf-mini-sub" id="t-peak-time">Busiest hour</div></div>
-    </div>
-    <div class="traf-mini">
-      <div class="traf-mini-top"><div class="traf-mini-icon lo"><i class="ti ti-clock-hour-4"></i></div><span class="traf-mini-label">Lowest usage</span></div>
-      <div><div class="traf-mini-val" id="t-low">—</div><div class="traf-mini-sub">MB per hour</div></div>
-    </div>
-  </div>
-
-  <div class="traf-chart-card">
-    <div class="traf-chart-head">
+    <div class="modal-head">
       <div>
-        <div class="traf-chart-title"><i class="ti ti-activity"></i> Traffic trend</div>
-        <div class="traf-chart-sub">Megabytes per hour</div>
+        <div class="modal-title">Edit config</div>
+        <div class="modal-sub">Update label, quota and behaviour.</div>
       </div>
-      <div class="traf-legend">
-        <div class="traf-legend-item"><span class="traf-legend-dot" style="background:var(--accent)"></span> Usage</div>
-        <div class="traf-legend-item"><span class="traf-legend-dot" style="background:var(--amber)"></span> Average</div>
-      </div>
+      <button class="modal-close" onclick="closeModal('modal-edit')"><i class="ti ti-x"></i></button>
     </div>
-    <div class="traf-chart-body"><canvas id="ch3"></canvas></div>
+    <div class="modal-body">
+      <input type="hidden" id="el-uuid">
+      <div class="field"><label class="field-label">Label</label><input class="input" id="el-label"></div>
+      <div class="field"><label class="field-label">Note</label><input class="input" id="el-note" placeholder="Optional"></div>
+      <div class="row" style="flex-wrap:nowrap;gap:var(--sp-2)">
+        <div class="field" style="flex:1"><label class="field-label">Quota</label><input class="input" id="el-quota" type="number" min="0" placeholder="0 = ∞"></div>
+        <div class="field" style="width:90px"><label class="field-label">Unit</label><select class="select" id="el-unit"><option>GB</option><option>MB</option></select></div>
+      </div>
+      <div class="field"><label class="field-label">Expires in (days, 0 = keep current)</label><input class="input" id="el-exp" type="number" min="0"></div>
+      <div class="field"><label class="field-label">Fingerprint</label>
+        <select class="select" id="el-fp">
+          <option>chrome</option><option>firefox</option><option>safari</option><option>ios</option><option>android</option>
+          <option>edge</option><option>360</option><option>qq</option><option>random</option><option>randomized</option>
+        </select>
+      </div>
+      <div class="field"><label class="field-label">ALPN</label><input class="input" id="el-alpn" placeholder="Blank = default"></div>
+      <div class="row" style="flex-wrap:nowrap;gap:var(--sp-2)">
+        <div class="field" style="flex:1"><label class="field-label">Port</label><input class="input" id="el-port" type="number" min="1" max="65535"></div>
+        <div class="field" style="flex:1"><label class="field-label">IP limit</label><input class="input" id="el-ip" type="number" min="0"></div>
+      </div>
+      <div class="field"><label class="field-label">Speed limit (Mbps, 0 = ∞)</label><input class="input" id="el-speed" type="number" min="0" step="0.5"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('modal-edit')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditConfig()"><i class="ti ti-check"></i> Save</button>
+    </div>
   </div>
-</section>
-<section class="pg" id="pg-connections">
-  <div class="topbar">
-    <div><div class="tb-title"><i class="ti ti-plug-connected"></i> Live connections</div><div class="tb-sub">Live IP and traffic monitoring for every connection</div></div>
-    <div class="tb-right"><span class="badge bg-green" id="conns-live">—</span><button class="btn btn-p btn-sm" onclick="refreshAll()"><i class="ti ti-refresh"></i> Refresh</button></div>
-  </div>
+</div>
 
-  <div class="conn-hero">
-    <div class="conn-hero-tile">
-      <div class="conn-hero-icon"><i class="ti ti-plug-connected"></i></div>
-      <div class="conn-hero-label">Live connections</div>
-      <div class="conn-hero-val" id="ch-count">—</div>
+<div class="modal-backdrop" id="modal-delete">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Delete config?</div>
+        <div class="modal-sub">This action cannot be undone.</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-delete')"><i class="ti ti-x"></i></button>
     </div>
-    <div class="conn-hero-tile">
-      <div class="conn-hero-icon"><i class="ti ti-transfer"></i></div>
-      <div class="conn-hero-label">Current total traffic</div>
-      <div class="conn-hero-val" id="ch-traffic">—</div>
+    <div class="modal-body">
+      <p style="font-size:var(--fs-13);color:var(--fg-1);line-height:1.6" id="delete-msg">Are you sure?</p>
     </div>
-    <div class="conn-hero-tile">
-      <div class="conn-hero-icon"><i class="ti ti-clock"></i></div>
-      <div class="conn-hero-label">Average session length</div>
-      <div class="conn-hero-val" id="ch-avgdur">—</div>
-    </div>
-    <div class="conn-hero-tile">
-      <div class="conn-hero-icon"><i class="ti ti-map-pin"></i></div>
-      <div class="conn-hero-label">Unique IPs</div>
-      <div class="conn-hero-val" id="ch-uniq">—</div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('modal-delete')">Cancel</button>
+      <button class="btn btn-danger" id="delete-ok-btn"><i class="ti ti-trash"></i> Delete</button>
     </div>
   </div>
+</div>
 
-  <div class="conn-toolbar">
-    <div class="conn-toolbar-title"><i class="ti ti-list-details"></i> Connection list</div>
-    <div class="conn-live-badge"><span class="conn-live-dot"></span> Auto-refreshes every 5 seconds</div>
+<div class="modal-backdrop" id="modal-newsub">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">New sub-group</div>
+        <div class="modal-sub">A public page bundling selected configs.</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-newsub')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label class="field-label">Name</label><input class="input" id="ns-name" placeholder="e.g. Team — Europe"></div>
+      <div class="field"><label class="field-label">Description</label><input class="input" id="ns-desc" placeholder="Optional"></div>
+      <div class="field"><label class="field-label">Password (optional)</label>
+        <div class="input-wrap">
+          <input class="input" id="ns-pw" type="password" placeholder="Leave blank for public">
+          <button class="trail" onclick="togglePw('ns-pw', this)" aria-label="Show"><i class="ti ti-eye"></i></button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('modal-newsub')">Cancel</button>
+      <button class="btn btn-primary" onclick="createGroup()"><i class="ti ti-folder-plus"></i> Create</button>
+    </div>
   </div>
+</div>
 
-  <div class="conn-grid-v2" id="conns-grid"></div>
-  <div class="conn-empty-v2" id="conns-empty" style="display:none">
-    <div class="conn-empty-v2-icon"><i class="ti ti-plug-off"></i></div>
-    <div class="conn-empty-v2-title">No active connections</div>
-    <div class="conn-empty-v2-sub">Clients appear here as soon as they connect</div>
-  </div>
-</section>
-<section class="pg" id="pg-security">
-  <div class="topbar"><div><div class="tb-title"><i class="ti ti-shield-lock"></i> Security</div></div></div>
-  <div class="g2">
-    <div class="card">
-      <div class="card-title"><i class="ti ti-lock"></i> Encryption</div>
-      <div class="sr"><span class="sr-k"><i class="ti ti-certificate"></i> TLS/HTTPS</span><span class="sr-v" style="color:var(--green-t)">● Active (443)</span></div>
-      <div class="sr"><span class="sr-k"><i class="ti ti-fingerprint"></i> Fingerprint</span><span class="sr-v">Chrome Spoof</span></div>
-      <div class="sr"><span class="sr-k"><i class="ti ti-network"></i> Protocols</span><span class="sr-v">VLESS/WS + XHTTP Ultra</span></div>
-      <div class="sr"><span class="sr-k"><i class="ti ti-key"></i> Password hash</span><span class="sr-v">SHA-256+Salt</span></div>
-      <div class="sr"><span class="sr-k"><i class="ti ti-cookie"></i> Session</span><span class="sr-v">HttpOnly · 7 days</span></div>
+<div class="modal-backdrop" id="modal-pick">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="pick-title">Manage configs</div>
+        <div class="modal-sub">Toggle configs to include or exclude them.</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-pick')"><i class="ti ti-x"></i></button>
     </div>
-    <div class="card">
-      <div class="card-title"><i class="ti ti-shield-check"></i> Access control</div>
-      <div class="sr"><span class="sr-k"><i class="ti ti-id-badge"></i> UUID Auth strict</span><span class="sr-v" style="color:var(--green-t)">● Active v9</span></div>
-      <div class="sr"><span class="sr-k"><i class="ti ti-toggle-right"></i> Enable / disable configs</span><span class="sr-v" style="color:var(--green-t)">● Active</span></div>
-      <div class="sr"><span class="sr-k"><i class="ti ti-gauge"></i> Traffic quota</span><span class="sr-v" style="color:var(--green-t)">● Active</span></div>
-      <div class="sr"><span class="sr-k"><i class="ti ti-calendar-x"></i> Expiry date</span><span class="sr-v" style="color:var(--green-t)">● Active</span></div>
-      <div class="sr"><span class="sr-k"><i class="ti ti-lock"></i> Sub public page password</span><span class="sr-v" style="color:var(--green-t)">● Optional · SHA-256</span></div>
+    <div class="modal-body">
+      <div class="search-wrap">
+        <i class="ti ti-search"></i>
+        <input class="search-input" id="pick-search" placeholder="Search configs…" oninput="filterPicker(this.value)">
+      </div>
+      <div class="picker-list" id="pick-list"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('modal-pick')">Close</button>
+      <button class="btn btn-primary" onclick="savePicker()"><i class="ti ti-check"></i> Save</button>
     </div>
   </div>
-</section>
-<section class="pg" id="pg-logs">
-  <div class="topbar"><div><div class="tb-title"><i class="ti ti-history"></i> Activity log</div><div class="tb-sub">Full history of panel events</div></div><div class="tb-right"><button class="btn btn-p btn-sm" onclick="loadActivity()"><i class="ti ti-refresh"></i></button></div></div>
-  <div class="card"><div class="log-timeline" id="logs-list">—</div><div class="empty" id="logs-empty" style="display:none"><i class="ti ti-history-toggle"></i><p>No activity recorded yet</p></div></div>
-</section>
-<section class="pg" id="pg-errors">
-  <div class="topbar"><div><div class="tb-title"><i class="ti ti-alert-triangle"></i> Errors</div></div><div class="tb-right"><span class="badge bg-red" id="errs-badge">0</span><button class="btn btn-p btn-sm" onclick="refreshAll()"><i class="ti ti-refresh"></i></button></div></div>
-  <div class="card"><div class="card-title"><i class="ti ti-bug"></i> Error log</div><div id="errs-full">—</div></div>
-</section>
-<section class="pg" id="pg-testws">
-  <div class="topbar"><div><div class="tb-title"><i class="ti ti-wifi"></i> WebSocket test</div></div></div>
-  <div class="card" style="max-width:660px">
-    <div class="cl amber" style="margin-top:0;margin-bottom:12px"><i class="ti ti-alert-triangle"></i><span>Only registered, active UUIDs can connect (this only tests VLESS/WS; XHTTP is tested from the client itself).</span></div>
-    <div class="form-row" style="margin-bottom:12px">
-      <div class="fg" style="flex:1"><label>UUID (must exist in Configs)</label><input class="fi" id="ws-uuid" placeholder="UUID an active config" style="width:100%"></div>
-      <button class="btn btn-p" onclick="wsConn()"><i class="ti ti-plug-connected"></i> connections</button>
-      <button class="btn btn-d" onclick="wsDisc()"><i class="ti ti-plug-x"></i> Disconnect</button>
+</div>
+
+<div class="modal-backdrop" id="modal-qr">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="qr-title">Scan QR</div>
+        <div class="modal-sub">Point your VPN client's scanner at it.</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-qr')"><i class="ti ti-x"></i></button>
     </div>
-    <div class="form-row" style="margin-bottom:12px">
-      <input class="fi" id="ws-msg" placeholder="Test message..." style="flex:1">
-      <button class="btn btn-o" onclick="wsSend()"><i class="ti ti-send"></i> Send</button>
+    <div class="modal-body">
+      <div class="qr-box"><div class="qr-canvas" id="qr-img-wrap"><img id="qr-img" src="" alt="QR"></div></div>
     </div>
-    <div style="background:var(--field);border:1px solid var(--card-b);border-radius:10px;padding:14px;height:250px;overflow-y:auto;font-family:ui-monospace,monospace;font-size:10.5px;line-height:1.9" id="ws-log">
-      <p style="color:var(--t3)">Waiting for connection...</p>
+    <div class="modal-foot">
+      <button class="btn btn-primary" onclick="copyQRText()"><i class="ti ti-copy"></i> Copy link</button>
     </div>
   </div>
-</section>
-<section class="pg" id="pg-settings">
-  <div class="topbar"><div><div class="tb-title"><i class="ti ti-settings"></i> Settings</div></div></div>
-  <div class="g2">
-    <div class="srv-panel">
-      <div class="srv-hero">
-        <div class="srv-hero-icon"><i class="ti ti-server-2"></i></div>
-        <div class="srv-hero-text">
-          <div class="srv-hero-domain" id="set-host">—</div>
-          <div class="srv-hero-sub"><span class="dot dg pulse"></span> Online · Railway</div>
-        </div>
-      </div>
-      <div class="srv-tiles">
-        <div class="srv-tile"><div class="srv-tile-icon"><i class="ti ti-route"></i></div><div class="srv-tile-text"><div class="srv-tile-label">Default port</div><div class="srv-tile-val">443 (TLS) · Editable per config</div></div></div>
-        <div class="srv-tile"><div class="srv-tile-icon"><i class="ti ti-versions"></i></div><div class="srv-tile-text"><div class="srv-tile-label">Version</div><div class="srv-tile-val">v11</div></div></div>
-        <div class="srv-tile"><div class="srv-tile-icon"><i class="ti ti-brand-fastapi"></i></div><div class="srv-tile-text"><div class="srv-tile-label">Framework</div><div class="srv-tile-val">FastAPI + Uvicorn</div></div></div>
-        <div class="srv-tile"><div class="srv-tile-icon"><i class="ti ti-cloud"></i></div><div class="srv-tile-text"><div class="srv-tile-label">Platform</div><div class="srv-tile-val">Railway</div></div></div>
-        <div class="srv-tile" style="grid-column:1/-1"><div class="srv-tile-icon"><i class="ti ti-device-floppy"></i></div><div class="srv-tile-text"><div class="srv-tile-label">Storage</div><div class="srv-tile-val">JSON File (/data)</div></div></div>
-      </div>
-    </div>
-    <div class="pw-panel">
-      <div class="pw-hero">
-        <div class="pw-hero-icon"><i class="ti ti-key"></i></div>
-        <div class="pw-hero-text">
-          <div class="pw-hero-title">Change password</div>
-          <div class="pw-hero-sub">Choose a strong password and keep it somewhere safe</div>
-        </div>
-      </div>
-      <div class="pw-body">
-        <div class="pw-field">
-          <label>Current password</label>
-          <input class="pw-input" type="password" id="cp-cur" placeholder="Enter your current password">
-          <button class="pw-eye" type="button" onclick="togglePwField('cp-cur',this)"><i class="ti ti-eye"></i></button>
-        </div>
-        <div class="pw-field" style="margin-bottom:6px">
-          <label>New password</label>
-          <input class="pw-input" type="password" id="cp-new" placeholder="At least 4 characters" oninput="checkPwStrength(this.value)">
-          <button class="pw-eye" type="button" onclick="togglePwField('cp-new',this)"><i class="ti ti-eye"></i></button>
-        </div>
-        <div class="pw-strength" id="pw-strength-bar">
-          <div class="pw-strength-seg"></div><div class="pw-strength-seg"></div><div class="pw-strength-seg"></div><div class="pw-strength-seg"></div>
-        </div>
-        <div class="pw-strength-label" id="pw-strength-label"><i class="ti ti-shield"></i> Password strength</div>
-        <div class="pw-reqs">
-          <span class="pw-req" id="req-len"><i class="ti ti-circle-dashed"></i> At least 4 characters</span>
-          <span class="pw-req" id="req-num"><i class="ti ti-circle-dashed"></i> Contains a number</span>
-          <span class="pw-req" id="req-case"><i class="ti ti-circle-dashed"></i> Upper and lower case</span>
-        </div>
-        <div class="pw-field" style="margin-bottom:18px">
-          <label>Confirm new password</label>
-          <input class="pw-input" type="password" id="cp-cf" placeholder="Confirm new password">
-          <button class="pw-eye" type="button" onclick="togglePwField('cp-cf',this)"><i class="ti ti-eye"></i></button>
-        </div>
-        <button class="pw-submit" onclick="changePw()"><i class="ti ti-shield-check"></i> Save new password</button>
-      </div>
-    </div>
-  </div>
-</section>
-<section class="pg" id="pg-support">
-  <div class="topbar"><div><div class="tb-title"><i class="ti ti-headset"></i> Support</div></div></div>
-  <div class="srv-panel">
-    <div class="srv-hero">
-      <div class="srv-hero-icon"><i class="ti ti-headset"></i></div>
-      <div class="srv-hero-text">
-        <div class="srv-hero-domain">Support</div>
-        <div class="srv-hero-sub"><span class="dot dg pulse"></span> Contact</div>
-      </div>
-    </div>
-    <div class="srv-tiles">
-      <a class="srv-tile" href="https://t.me/X4GHUB" target="_blank" style="text-decoration:none;cursor:pointer">
-        <div class="srv-tile-icon"><i class="ti ti-speakerphone"></i></div>
-        <div class="srv-tile-text"><div class="srv-tile-label">Telegram channel</div><div class="srv-tile-val">t.me/X4GHUB</div></div>
-      </a>
-      <a class="srv-tile" href="https://github.com/x4gpanell" target="_blank" style="text-decoration:none;cursor:pointer">
-        <div class="srv-tile-icon"><i class="ti ti-brand-github"></i></div>
-        <div class="srv-tile-text"><div class="srv-tile-label">GitHub</div><div class="srv-tile-val">github.com/x4gpanell</div></div>
-      </a>
-    </div>
-  </div>
-</section>
-</main>
+</div>
+
+<div class="toast-host" id="toast-host"></div>
+
 <script>
-let isDark=localStorage.getItem('gateway-theme')!=='light';
-function applyTheme(dark){
-  document.documentElement.setAttribute('data-theme',dark?'dark':'light');
-  const icon=dark?'ti-sun':'ti-moon',label=dark?'Light theme':'Dark theme';
-  document.getElementById('theme-icon').className='ti '+icon;
-  document.getElementById('theme-label').textContent=label;
-  const mobI=document.getElementById('theme-mob-icon');if(mobI)mobI.className='ti '+icon;
+/* ══════════════════════════════════════════════════════════════════════════
+   Theme
+   ══════════════════════════════════════════════════════════════════════════ */
+(function(){
+  const saved = localStorage.getItem('gateway-theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  renderThemeLabels(saved);
+})();
+function renderThemeLabels(theme){
+  const icon = theme === 'dark' ? 'ti-sun' : 'ti-moon';
+  const sideLabel = theme === 'dark' ? 'Light mode' : 'Dark mode';
+  const mobIcon = document.getElementById('mob-theme-icon');
+  if (mobIcon) mobIcon.className = 'ti ' + icon;
+  const sideIcon = document.getElementById('side-theme-icon');
+  if (sideIcon) sideIcon.className = 'ti ' + icon;
+  const sideLbl = document.getElementById('side-theme-label');
+  if (sideLbl) sideLbl.textContent = sideLabel;
 }
-function toggleTheme(){isDark=!isDark;localStorage.setItem('gateway-theme',isDark?'dark':'light');applyTheme(isDark);if(typeof restyleCharts==='function')restyleCharts()}
-applyTheme(isDark);
-function toast(msg,type=''){
-  const t=document.getElementById('toast');
-  t.textContent=msg;t.className='toast show'+(type?' '+type:'');
-  setTimeout(()=>t.classList.remove('show'),2400);
+function toggleTheme(){
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('gateway-theme', next);
+  renderThemeLabels(next);
+  // Re-render charts so labels/colors match the new theme
+  if (typeof rebuildCharts === 'function') rebuildCharts();
 }
-function fmtB(b){if(!b||b===0)return '0 B';if(b<1024)return b+' B';if(b<1024**2)return (b/1024).toFixed(1)+' KB';if(b<1024**3)return (b/1024**2).toFixed(2)+' MB';return (b/1024**3).toFixed(2)+' GB'}
-function toFa(n){return String(n)}
-function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function daysLeft(exp){if(!exp)return null;return Math.ceil((new Date(exp)-Date.now())/(864e5))}
-function expChip(exp,expired){
-  if(expired)return '<span class="exp-chip ec-exp"><i class="ti ti-calendar-x"></i> Expired</span>';
-  if(!exp)return '<span class="exp-chip ec-inf"><i class="ti ti-infinity"></i> Unlimited</span>';
-  const d=daysLeft(exp);
-  if(d<=0)return '<span class="exp-chip ec-exp"><i class="ti ti-calendar-x"></i> Expired</span>';
-  if(d<=3)return `<span class="exp-chip ec-warn"><i class="ti ti-alert-triangle"></i> ${toFa(d)} days left</span>`;
-  return `<span class="exp-chip ec-ok"><i class="ti ti-calendar-check"></i> ${toFa(d)} days left</span>`;
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Navigation
+   ══════════════════════════════════════════════════════════════════════════ */
+const PAGE_LOADERS = {
+  overview: () => { refreshOverview(); },
+  links: () => { loadConfigs(); loadGroupsListForPicker(); },
+  subgroups: () => { loadGroups(); },
+  subscriptions: () => { loadSubsPage(); },
+  traffic: () => { refreshTraffic(); },
+  connections: () => { loadConnections(); },
+  logs: () => { loadActivity(); },
+  errors: () => { loadErrors(); },
+  settings: () => { document.getElementById('set-host').textContent = location.host; }
+};
+function navTo(name){
+  document.querySelectorAll('.side-item').forEach(el => el.classList.toggle('is-active', el.dataset.page === name));
+  document.querySelectorAll('.page').forEach(el => el.classList.toggle('on', el.id === 'page-' + name));
+  if (PAGE_LOADERS[name]) PAGE_LOADERS[name]();
+  closeNav();
+  window.scrollTo({top: 0, behavior: 'smooth'});
 }
-function protoBadge(p){
-  const m={'vless-ws':['VLESS · WS','pc-ws'],'xhttp-packet-up':['XHTTP · packet-up','pc-xhttp'],'xhttp-stream-up':['XHTTP · stream-up','pc-xhttp'],'xhttp-stream-one':['XHTTP ULTRA','pc-ultra']};
-  const v=m[p]||m['vless-ws'];
-  return `<span class="proto-chip ${v[1]}">${v[0]}</span>`;
+document.querySelectorAll('.side-item').forEach(el => el.addEventListener('click', () => navTo(el.dataset.page)));
+
+function openNav(){
+  document.getElementById('side').classList.add('open');
+  document.getElementById('nav-backdrop').classList.add('open');
 }
-async function checkAuth(){try{const r=await fetch('/api/me');const d=await r.json();if(!d.authenticated)location.href='/login';}catch(e){location.href='/login'}}
-async function logout(){try{await fetch('/api/logout',{method:'POST'})}catch(e){}location.href='/login'}
-document.getElementById('logout-btn').addEventListener('click',logout);
-async function authF(url,opts={}){
-  const r=await fetch(url,opts);
-  if(r.status===401){location.href='/login';throw new Error('unauthorized')}
+function closeNav(){
+  document.getElementById('side').classList.remove('open');
+  document.getElementById('nav-backdrop').classList.remove('open');
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Utilities
+   ══════════════════════════════════════════════════════════════════════════ */
+function esc(s){return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function fmtB(b){
+  if (!b || b === 0) return '0 B';
+  if (b < 1024) return b + ' B';
+  if (b < 1024**2) return (b/1024).toFixed(1) + ' KB';
+  if (b < 1024**3) return (b/1024**2).toFixed(2) + ' MB';
+  return (b/1024**3).toFixed(2) + ' GB';
+}
+function daysLeft(exp){ if (!exp) return null; return Math.ceil((new Date(exp) - Date.now()) / 864e5); }
+function toast(title, msg = '', level = 'info'){
+  const host = document.getElementById('toast-host');
+  const icons = { ok: 'ti-check', err: 'ti-x', warn: 'ti-alert-triangle', info: 'ti-info-circle' };
+  const el = document.createElement('div');
+  el.className = 'toast ' + level;
+  el.innerHTML = `<div class="ic"><i class="ti ${icons[level] || icons.info}"></i></div><div class="body"><div class="ttl">${esc(title)}</div>${msg ? `<div class="msg">${esc(msg)}</div>` : ''}</div>`;
+  host.appendChild(el);
+  setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 250); }, 2600);
+}
+function copyText(id){
+  const el = document.getElementById(id);
+  if (!el) return;
+  const txt = el.textContent;
+  navigator.clipboard.writeText(txt).then(() => toast('Copied to clipboard', '', 'ok'));
+}
+function copyRaw(txt){
+  navigator.clipboard.writeText(txt).then(() => toast('Copied to clipboard', '', 'ok'));
+}
+function togglePw(id, btn){
+  const el = document.getElementById(id);
+  const show = el.type === 'password';
+  el.type = show ? 'text' : 'password';
+  btn.querySelector('i').className = show ? 'ti ti-eye-off' : 'ti ti-eye';
+  btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   API helper
+   ══════════════════════════════════════════════════════════════════════════ */
+async function api(url, opts = {}){
+  const r = await fetch(url, opts);
+  if (r.status === 401){ location.href = '/login'; throw new Error('unauthorized'); }
   return r;
 }
-function setQuota(val,unit,el){
-  document.getElementById('nl-val').value = val===0?'':val;
-  document.getElementById('nl-unit').value = unit;
-  document.querySelectorAll('#quota-chips .chip').forEach(c=>c.classList.remove('active'));
-  el.classList.add('active');
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Global state
+   ══════════════════════════════════════════════════════════════════════════ */
+let allLinks = [];
+let allGroups = [];
+let activeFilter = 'all';
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Overview
+   ══════════════════════════════════════════════════════════════════════════ */
+async function refreshOverview(){
+  try {
+    const r = await api('/stats');
+    const d = await r.json();
+    document.getElementById('m-conns').textContent = d.active_connections;
+    document.getElementById('nb-conns').textContent = d.active_connections;
+    document.getElementById('m-traffic').innerHTML = d.total_traffic_mb.toFixed(1) + '<span class="unit">MB</span>';
+    document.getElementById('m-active').textContent = d.active_links ?? '—';
+    document.getElementById('m-total').textContent = 'of ' + d.links_count;
+    document.getElementById('m-subs').textContent = d.subs_count ?? 0;
+    document.getElementById('nb-links').textContent = d.links_count;
+    document.getElementById('nb-subs').textContent = d.subs_count ?? 0;
+    document.getElementById('uptime-badge').textContent = d.uptime;
+    document.getElementById('uptime-inline').textContent = d.uptime;
+    document.getElementById('last-update').textContent = 'Updated ' + new Date().toLocaleTimeString();
+    document.getElementById('err-badge').textContent = d.total_errors;
+    renderOverviewConfigs();
+    renderErrors(d.recent_errors || []);
+    // Charts
+    if (d.hourly) updateHourlyChart(d.hourly);
+  } catch (e) { /* silent */ }
 }
-function setExpiry(days,el){
-  document.getElementById('nl-exp').value = days===0?'':days;
-  document.querySelectorAll('#exp-chips .chip').forEach(c=>c.classList.remove('active'));
-  el.classList.add('active');
+
+async function refreshDefaultLink(){
+  try {
+    const r = await api('/api/links');
+    const d = await r.json();
+    allLinks = d.links || [];
+    const def = allLinks.find(l => l.is_default) || allLinks.find(l => l.active && !l.expired) || allLinks[0];
+    document.getElementById('default-link').textContent = def ? def.vless_link : 'No configs yet';
+    document.getElementById('badge-links').textContent = allLinks.length + ' configs';
+  } catch (e) {}
 }
-function selectProto(val,el){
-  document.getElementById('nl-proto').value = val;
-  document.querySelectorAll('.proto-card').forEach(c=>c.classList.remove('active'));
-  el.classList.add('active');
-}
-function setIpLimit(n,el){
-  document.getElementById('nl-iplimit').value = n;
-  document.querySelectorAll('#iplimit-chips .chip').forEach(c=>c.classList.remove('active'));
-  el.classList.add('active');
-}
-function setSpeedLimit(n,el){
-  document.getElementById('nl-speed').value = n;
-  document.getElementById('nl-speed-unit').value = 'MBIT';
-  document.querySelectorAll('#speed-chips .chip').forEach(c=>c.classList.remove('active'));
-  el.classList.add('active');
-}
-function onAlpnPresetChange(){
-  const p=document.getElementById('nl-alpn-preset').value;
-  const inp=document.getElementById('nl-alpn');
-  if(p==='__custom__'){inp.style.display='block';inp.value='';inp.focus();}
-  else{inp.style.display='none';inp.value=p;}
-}
-const sb=document.getElementById('sb'),overlay=document.getElementById('overlay');
-function openSb(){sb.classList.add('open');overlay.classList.add('show')}
-function closeSb(){sb.classList.remove('open');overlay.classList.remove('show')}
-document.getElementById('open-sb').addEventListener('click',openSb);
-document.getElementById('close-sb').addEventListener('click',closeSb);
-overlay.addEventListener('click',closeSb);
-function navTo(name){
-  document.querySelectorAll('.nav-it').forEach(n=>n.classList.toggle('on',n.dataset.pg===name));
-  document.querySelectorAll('.pg').forEach(p=>p.classList.toggle('on',p.id==='pg-'+name));
-  const loaders={links:loadLinks,connections:loadConns,errors:loadErrs,subscriptions:loadSubsPage,subgroups:loadSubs,logs:loadActivity};
-  if(loaders[name])loaders[name]();
-  closeSb();window.scrollTo({top:0,behavior:'smooth'});
-}
-document.querySelectorAll('.nav-it').forEach(el=>el.addEventListener('click',()=>navTo(el.dataset.pg)));
-function openModal(id){document.getElementById(id).classList.add('open')}
-function closeModal(id){document.getElementById(id).classList.remove('open')}
-let prevTraf=0,ch1,ch2,ch3;
-async function fetchStats(){
-  try{
-    const r=await authF('/stats'),d=await r.json();
-    document.getElementById('m-conns').textContent=d.active_connections;
-    document.getElementById('conns-nb').textContent=d.active_connections;
-    document.getElementById('m-traffic').innerHTML=d.total_traffic_mb.toFixed(1)+'<span class="m-unit">MB</span>';
-    document.getElementById('m-alinks').textContent=d.active_links??'—';
-    document.getElementById('m-lsub').textContent='of '+d.links_count+' configs';
-    document.getElementById('m-subs').textContent=d.subs_count??'—';
-    document.getElementById('errs-badge').textContent=d.total_errors+' errors';
-    document.getElementById('uptime-inline').textContent=d.uptime;
-    document.getElementById('uptime-badge').textContent='Railway · '+d.uptime;
-    document.getElementById('last-upd').textContent='Last updated: '+new Date().toLocaleTimeString('en-US');
-    document.getElementById('conns-live').innerHTML='<span class="dot dg pulse"></span> '+d.active_connections+' connections';
-    document.getElementById('t-traffic').innerHTML=d.total_traffic_mb.toFixed(1)+'<span class="m-unit">MB</span>';
-    const delta=d.total_traffic_mb-prevTraf,pct=Math.min(100,Math.round((delta/50)*100));
-    document.getElementById('bw-pct').textContent=pct+'%';
-    document.getElementById('bw-bar').style.width=pct+'%';
-    prevTraf=d.total_traffic_mb;
-    if(d.hourly){
-      const labels=Object.keys(d.hourly).sort(),vals=labels.map(k=>+(d.hourly[k]/1024**2).toFixed(2));
-      [ch1,ch3].forEach(c=>{if(!c)return;c.data.labels=labels;c.data.datasets[0].data=vals;c.update()});
-      if(vals.length){const avg=vals.reduce((a,b)=>a+b,0)/vals.length,peak=Math.max(...vals);document.getElementById('t-avg').innerHTML=avg.toFixed(2)+'<span class="m-unit">MB</span>';document.getElementById('t-peak').innerHTML=peak.toFixed(2)+'<span class="m-unit">MB</span>';}
-    }
-    renderErrs(d.recent_errors||[]);
-  }catch(e){console.error(e)}
-}
-function renderErrs(errs){
-  const el=document.getElementById('errs-full');if(!el)return;
-  if(!errs.length){el.innerHTML='<div style="color:var(--green-t);padding:10px;font-size:12px;display:flex;align-items:center;gap:5px"><i class="ti ti-circle-check"></i> No errors</div>';return}
-  el.innerHTML=errs.slice().reverse().map(e=>`<div class="erow"><div class="etime"><i class="ti ti-clock"></i>${new Date(e.time).toLocaleString('en-US')}</div><div class="emsg">${esc(e.error)}${e.url?' — '+esc(e.url):''}</div></div>`).join('');
-}
-async function loadActivity(){
-  try{
-    const r=await authF('/api/activity'),d=await r.json();
-    const logs=(d.logs||[]).slice().reverse();
-    const el=document.getElementById('logs-list'),em=document.getElementById('logs-empty');
-    if(!logs.length){el.innerHTML='';em.style.display='block';return}
-    em.style.display='none';
-    const icMap={ok:'ti-circle-check',err:'ti-circle-x',warn:'ti-alert-triangle',info:'ti-info-circle'};
-    const kindFa={link:'Config',sub:'Group',auth:'Sign-in',connection:'Connection',system:'System'};
-    el.innerHTML=logs.map(l=>`
-      <div class="log-item">
-        <div class="log-ic ${l.level}"><i class="ti ${icMap[l.level]||'ti-info-circle'}"></i></div>
-        <div class="log-body">
-          <div class="log-msg">${esc(l.message)}</div>
-          <div class="log-time"><i class="ti ti-clock"></i> ${new Date(l.time).toLocaleString('en-US')} <span class="log-kind">${kindFa[l.kind]||l.kind}</span></div>
-        </div>
-      </div>
-    `).join('');
-  }catch(e){console.error(e)}
-}
-let allSubsList=[],allLinksList=[];
-async function loadLinks(){
-  try{
-    const [lr,sr]=await Promise.all([authF('/api/links'),authF('/api/subs')]);
-    const {links=[]}=await lr.json();
-    const {subs=[]}=await sr.json();
-    allSubsList=subs;allLinksList=links;
-    const nlSub=document.getElementById('nl-sub');
-    nlSub.innerHTML='<option value="">— No group —</option>'+subs.map(s=>`<option value="${esc(s.sub_id)}">${esc(s.name)}</option>`).join('');
-    document.getElementById('links-nb').textContent=links.length;
-    document.getElementById('links-pg-cnt').textContent=toFa(links.length)+' configs';
-    document.getElementById('lsummary-badge').textContent=toFa(links.length);
-    const grid=document.getElementById('links-grid'),empty=document.getElementById('links-empty');
-    if(!links.length){grid.innerHTML='';empty.style.display='block';document.getElementById('lsummary').innerHTML='<div class="empty"><i class="ti ti-link-off"></i><p>No configs</p></div>';return}
-    empty.style.display='none';
-    const subMap=Object.fromEntries(subs.map(s=>[s.sub_id,s.name]));
-    grid.innerHTML=links.map(l=>{
-  const lim=l.limit_bytes===0?'∞':fmtB(l.limit_bytes);
-  const pct=l.limit_bytes===0?0:Math.min(100,l.used_bytes/l.limit_bytes*100);
-  const bc=pct>90?'var(--red)':pct>70?'var(--amber)':'var(--accent)';
-  const allowed=l.active&&!l.expired;
-  const cardCls=!l.active?'is-off':(l.expired?'is-exp':'');
-  return `<div class="cfg-card ${cardCls}">
-    <div class="cfg-row">
-      <span class="cfg-status-dot ${allowed?'pulse':''}"></span>
-      <div class="cfg-identity">
-        <div class="cfg-label">${esc(l.label)}</div>
-        <div class="cfg-sub-meta">
-          <span tabindex="0" role="button" class="cfg-uuid-mini" onclick="navigator.clipboard.writeText('${l.uuid}').then(()=>toast('UUID Copied','ok'))" title="${l.uuid}"><i class="ti ti-fingerprint"></i> ${l.uuid.slice(0,10)}…</span>
-          <span>${new Date(l.created_at).toLocaleDateString('en-US')}</span>
-        </div>
-      </div>
-      <div class="cfg-divider-v"></div>
-      <div class="cfg-usage-col">
-        <div class="ubar"><div class="ubar-f" style="width:${pct}%;background:${bc}"></div></div>
-        <div class="utxt"><span>${fmtB(l.used_bytes)}</span><span>of ${lim}</span></div>
-      </div>
-      <div class="cfg-divider-v"></div>
-      <div class="cfg-exp-col">${expChip(l.expires_at,l.expired)}</div>
-      <div class="cfg-divider-v"></div>
-      <div class="cfg-badges-col">
-        ${protoBadge(l.protocol)}
-        <span class="cfg-sub-tag" title="Connection port"><i class="ti ti-route"></i> :${l.port||443}</span>
-        <span class="cfg-sub-tag" title="Fingerprint"><i class="ti ti-fingerprint"></i> ${esc(l.fingerprint||'chrome')}</span>
-        <span class="cfg-sub-tag" title="Connected IPs / limit"><i class="ti ti-users"></i> ${l.connected_ips||0}${l.ip_limit?('/'+l.ip_limit):' (∞)'}</span>
-        <span class="cfg-sub-tag" title="Speed limit"><i class="ti ti-gauge"></i> ${l.speed_limit_bytes?((l.speed_limit_bytes*8/1024/1024).toFixed(1)+' Mbps'):'Unlimited'}</span>
-        ${l.sub_id&&allSubsList.find(s=>s.sub_id===l.sub_id)?`<span class="cfg-sub-tag"><i class="ti ti-folder"></i> ${esc(allSubsList.find(s=>s.sub_id===l.sub_id).name)}</span>`:''}
-      </div>
-      <div class="cfg-divider-v"></div>
-      <div class="cfg-actions">
-        <button class="tog${allowed?' on':''}" onclick="toggleActive('${l.uuid}',${!l.active})" title="Enable / disable" aria-label="Enable / disable"></button>
-        <button class="btn btn-sm btn-g btn-icon" onclick="navigator.clipboard.writeText('${esc(l.vless_link)}').then(()=>toast('Link copied','ok'))" title="Copy link"><i class="ti ti-copy"></i></button>
-        <button class="btn btn-sm btn-g btn-icon" onclick="navigator.clipboard.writeText('${esc(l.sub_url)}').then(()=>toast('Sub Copied','ok'))" title="Sub URL"><i class="ti ti-rss"></i></button>
-        <button class="btn btn-sm btn-g btn-icon" onclick="showQR('${esc(l.vless_link)}')" title="QR" aria-label="QR"><i class="ti ti-qrcode"></i></button>
-        <button class="btn btn-sm btn-amber btn-icon" onclick="openEditLink('${l.uuid}')" title="Edit" aria-label="Edit"><i class="ti ti-edit"></i></button>
-        <button class="btn btn-sm btn-g btn-icon" onclick="resetUsage('${l.uuid}')" title="Reset usage" aria-label="Reset usage"><i class="ti ti-rotate"></i></button>
-        <button class="btn btn-sm btn-d btn-icon" onclick="deleteLink('${l.uuid}')" title="Delete" aria-label="Delete"><i class="ti ti-trash"></i></button>
-      </div>
+
+function renderOverviewConfigs(){
+  const host = document.getElementById('overview-configs');
+  if (!allLinks.length){ host.innerHTML = '<div class="text-sm text-muted">No configs yet.</div>'; return; }
+  host.innerHTML = allLinks.slice(0, 6).map(l => `
+    <div class="list-row" style="padding:8px 0">
+      <div class="ico"><i class="ti ti-key"></i></div>
+      <div class="txt"><div class="ttl">${esc(l.label)}</div><div class="sub mono">${fmtB(l.used_bytes)} / ${l.limit_bytes === 0 ? '∞' : fmtB(l.limit_bytes)}</div></div>
     </div>
-  </div>`;
-}).join('');
-    document.getElementById('lsummary').innerHTML=links.slice(0,6).map(l=>`<div class="sr"><span class="sr-k" style="gap:5px"><i class="ti ${l.expired?'ti-calendar-x':l.active?'ti-circle-check':'ti-circle-x'}" style="color:${l.expired?'var(--amber)':l.active?'var(--green)':'var(--red)'}"></i>${esc(l.label)}</span><span class="sr-v" style="font-size:10px">${fmtB(l.used_bytes)} / ${l.limit_bytes===0?'∞':fmtB(l.limit_bytes)}</span></div>`).join('');
-  }catch(e){console.error(e)}
+  `).join('');
 }
-async function createLink(){
-  const label=document.getElementById('nl-label').value.trim()||'New config';
-  const val=document.getElementById('nl-val').value;
-  const unit=document.getElementById('nl-unit').value;
-  const exp=document.getElementById('nl-exp').value;
-  const note=document.getElementById('nl-note').value.trim();
-  const sub_id=document.getElementById('nl-sub').value||null;
-  const protocol=document.getElementById('nl-proto').value||'vless-ws';
-  const fingerprint=document.getElementById('nl-fp').value||'chrome';
-  const alpn=document.getElementById('nl-alpn').value.trim();
-  const port=Number(document.getElementById('nl-port').value)||443;
-  const ip_limit=Number(document.getElementById('nl-iplimit').value)||0;
-  const speed_limit_value=Number(document.getElementById('nl-speed').value)||0;
-  const speed_limit_unit=document.getElementById('nl-speed-unit').value;
-  try{
-    const r=await authF('/api/links',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({label,limit_value:val||0,limit_unit:unit,expires_days:exp||0,note,sub_id,protocol,fingerprint,alpn,port,ip_limit,speed_limit_value,speed_limit_unit})});
-    if(!r.ok)throw new Error('failed');
-    ['nl-label','nl-val','nl-exp','nl-note','nl-alpn'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('nl-port').value='443';
-    document.getElementById('nl-iplimit').value='0';
-    document.getElementById('nl-speed').value='0';
-    document.getElementById('nl-alpn-preset').value='';
-    document.getElementById('nl-alpn').style.display='none';
-    toast('Config created ✓','ok');loadLinks();
-  }catch(e){toast('Could not create config','err')}
-}
-function openEditLink(uuid){
-  const l=allLinksList.find(x=>x.uuid===uuid);
-  if(!l)return;
-  document.getElementById('el-uuid').value=uuid;
-  document.getElementById('el-label').value=l.label;
-  document.getElementById('el-note').value=l.note||'';
-  if(l.limit_bytes===0){document.getElementById('el-val').value='';document.getElementById('el-unit').value='GB';}
-  else{document.getElementById('el-val').value=(l.limit_bytes/1024/1024).toFixed(0);document.getElementById('el-unit').value='MB';}
-  document.getElementById('el-exp').value='';
-  document.getElementById('el-fp').value=l.fingerprint||'chrome';
-  document.getElementById('el-alpn').value=l.alpn||'';
-  document.getElementById('el-port').value=l.port||443;
-  document.getElementById('el-iplimit').value=l.ip_limit||0;
-  if(!l.speed_limit_bytes){document.getElementById('el-speed').value='0';document.getElementById('el-speed-unit').value='MBIT';}
-  else{document.getElementById('el-speed').value=(l.speed_limit_bytes*8/1024/1024).toFixed(2);document.getElementById('el-speed-unit').value='MBIT';}
-  openModal('modal-edit-link');
-}
-async function saveEditLink(){
-  const uuid=document.getElementById('el-uuid').value;
-  const label=document.getElementById('el-label').value.trim();
-  const note=document.getElementById('el-note').value.trim();
-  const val=document.getElementById('el-val').value;
-  const unit=document.getElementById('el-unit').value;
-  const exp=document.getElementById('el-exp').value;
-  const fingerprint=document.getElementById('el-fp').value||'chrome';
-  const alpn=document.getElementById('el-alpn').value.trim();
-  const port=Number(document.getElementById('el-port').value)||443;
-  const ip_limit=Number(document.getElementById('el-iplimit').value)||0;
-  const speed_limit_value=Number(document.getElementById('el-speed').value)||0;
-  const speed_limit_unit=document.getElementById('el-speed-unit').value;
-  const body={label,note,limit_value:val||0,limit_unit:unit,fingerprint,alpn,port,ip_limit,speed_limit_value,speed_limit_unit};
-  if(exp&&Number(exp)>0)body.expires_days=Number(exp);
-  try{
-    const r=await authF('/api/links/'+uuid,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(!r.ok)throw new Error();
-    closeModal('modal-edit-link');
-    toast('Config updated ✓','ok');loadLinks();
-  }catch(e){toast('Could not update config','err')}
-}
-async function toggleActive(uuid,newState){
-  try{const r=await authF('/api/links/'+uuid,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({active:newState})});if(!r.ok)throw new Error();toast(newState?'Enabled ✓':'Disabled','ok');loadLinks();}catch(e){toast('Error','err')}
-}
-async function resetUsage(uuid){
-  try{const r=await authF('/api/links/'+uuid,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({reset_usage:true})});if(!r.ok)throw new Error();toast('Usage reset ✓','ok');loadLinks();}catch(e){toast('Error','err')}
-}
-async function deleteLink(uuid){
-  if(!confirm('Delete this config?'))return;
-  try{const r=await authF('/api/links/'+uuid,{method:'DELETE'});if(!r.ok)throw new Error();toast('Deleted ✓','ok');loadLinks();}catch(e){toast('Error','err')}
-}
-function showQR(link){window.open('https://api.qrserver.com/v1/create-qr-code/?size=300x300&data='+encodeURIComponent(link),'_blank')}
-let allSubsRaw=[];
-async function loadSubs(){
-  try{
-    const r=await authF('/api/subs'),d=await r.json();
-    const subs=d.subs||[];
-    allSubsRaw=subs;
-    document.getElementById('subs-nb').textContent=subs.length;
-    document.getElementById('subs-pg-cnt').textContent=toFa(subs.length)+' Group';
-    renderSubsGrid(subs);
-  }catch(e){console.error(e)}
-}
-function renderSubsGrid(subs){
-  const grid=document.getElementById('subs-grid');
-  if(!subs.length){
-    grid.innerHTML='<div class="subs-empty-v2"><div class="subs-empty-v2-icon"><i class="ti ti-folders"></i></div><div class="subs-empty-v2-title">No groups yet</div><div class="subs-empty-v2-sub">Create a group to organize your configs</div></div>';
+
+function renderErrors(errs){
+  const host = document.getElementById('err-list');
+  if (!host) return;
+  if (!errs.length){
+    host.innerHTML = '<div class="text-sm" style="color:var(--ok-fg);display:flex;align-items:center;gap:6px"><i class="ti ti-circle-check"></i>No errors.</div>';
     return;
   }
-  grid.innerHTML=subs.map(s=>`
-    <div class="sub-card">
-      <div class="sub-card-top">
-        <div class="sub-card-head-v2">
-          <div class="sub-card-icon"><i class="ti ti-folder"></i></div>
-          <div class="sub-card-titles">
-            <div class="sub-card-name-v2">${esc(s.name)}</div>
-            ${s.desc?`<div class="sub-card-desc-v2">${esc(s.desc)}</div>`:'<div class="sub-card-desc-v2" style="opacity:.5">No description</div>'}
+  host.innerHTML = errs.slice().reverse().map(e => `
+    <div class="err-item">
+      <div class="err-time">${new Date(e.time).toLocaleString()}</div>
+      <div class="err-msg">${esc(e.error)}${e.url ? ' — ' + esc(e.url) : ''}</div>
+    </div>
+  `).join('');
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Configs
+   ══════════════════════════════════════════════════════════════════════════ */
+async function loadConfigs(){
+  try {
+    const [lr, sr] = await Promise.all([api('/api/links'), api('/api/subs')]);
+    const ld = await lr.json();
+    const sd = await sr.json();
+    allLinks = ld.links || [];
+    allGroups = sd.subs || [];
+    document.getElementById('badge-links').textContent = allLinks.length + ' configs';
+    document.getElementById('nb-links').textContent = allLinks.length;
+
+    // Fill sub-group select
+    const sel = document.getElementById('nl-sub');
+    sel.innerHTML = '<option value="">— none —</option>' + allGroups.map(g => `<option value="${esc(g.sub_id)}">${esc(g.name)}</option>`).join('');
+
+    renderConfigs();
+  } catch (e) { toast('Could not load configs', '', 'err'); }
+}
+
+function renderConfigs(){
+  const grid = document.getElementById('config-grid');
+  const empty = document.getElementById('config-empty');
+  const query = (document.getElementById('link-search').value || '').trim().toLowerCase();
+
+  let list = allLinks;
+  if (activeFilter === 'active') list = list.filter(l => l.active && !l.expired);
+  else if (activeFilter === 'expired') list = list.filter(l => l.expired || (l.expires_at && daysLeft(l.expires_at) <= 3 && daysLeft(l.expires_at) > 0));
+  else if (activeFilter === 'disabled') list = list.filter(l => !l.active);
+  if (query) list = list.filter(l => (l.label || '').toLowerCase().includes(query) || (l.uuid || '').includes(query));
+
+  if (!list.length){ grid.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  grid.innerHTML = list.map(l => renderConfigCard(l)).join('');
+}
+
+function renderConfigCard(l){
+  const pct = l.limit_bytes === 0 ? 0 : Math.min(100, (l.used_bytes / l.limit_bytes) * 100);
+  const fillClass = pct > 90 ? 'err' : pct > 70 ? 'warn' : '';
+  const statusClass = !l.active ? 'is-inactive' : (l.expired ? 'is-expired' : '');
+  const statusPill = !l.active
+    ? '<span class="status-pill offline"><span class="dot err"></span> Disabled</span>'
+    : l.expired
+      ? '<span class="status-pill warn"><span class="dot warn"></span> Expired</span>'
+      : '<span class="status-pill online"><span class="dot ok live"></span> Active</span>';
+  const protoBadge = l.protocol === 'vless-ws' ? '<span class="badge brand">VLESS · WS</span>'
+    : l.protocol === 'xhttp-packet-up' ? '<span class="badge info">XHTTP · packet-up</span>'
+    : '<span class="badge info">XHTTP · stream-up</span>';
+  const dl = daysLeft(l.expires_at);
+  const expLabel = !l.expires_at ? '<span class="meta"><i class="ti ti-infinity"></i> never</span>'
+    : dl > 0 ? `<span class="meta"><i class="ti ti-calendar"></i> ${dl}d</span>`
+    : '<span class="meta"><i class="ti ti-calendar-x"></i> expired</span>';
+  const group = l.sub_id && allGroups.find(g => g.sub_id === l.sub_id);
+  const groupBadge = group ? `<span class="badge brand">${esc(group.name)}</span>` : '';
+  return `
+    <div class="config-card ${statusClass}">
+      <div class="config-body">
+        <div class="config-head">
+          <div>
+            <div class="config-name">${esc(l.label)}</div>
+            <div class="config-uuid" onclick="copyRaw('${esc(l.uuid)}')" title="Click to copy UUID">${esc(l.uuid.slice(0, 16))}…</div>
           </div>
-          <div class="sub-card-lock-badge ${s.has_password?'locked':'open'}" title="${s.has_password?'Password protected':'Public'}">
-            <i class="ti ${s.has_password?'ti-lock':'ti-lock-open'}"></i>
-          </div>
+          ${statusPill}
         </div>
-        <div class="sub-card-stats">
-          <div class="sub-card-stat"><div class="sub-card-stat-val">${toFa(s.links_count)}</div><div class="sub-card-stat-label">configs</div></div>
-          <div class="sub-card-stat"><div class="sub-card-stat-val" style="color:var(--green-t)">${toFa(s.active_count)}</div><div class="sub-card-stat-label">Active</div></div>
-          <div class="sub-card-stat"><div class="sub-card-stat-val" style="font-size:12px">${esc(s.total_used_fmt)}</div><div class="sub-card-stat-label">used</div></div>
+        <div class="config-tags">
+          ${protoBadge}
+          ${groupBadge}
+        </div>
+        <div class="progress" style="margin-top:12px"><div class="fill ${fillClass}" style="width:${pct}%"></div></div>
+        <div class="progress-meta">
+          <span>${fmtB(l.used_bytes)} / ${l.limit_bytes === 0 ? '∞' : fmtB(l.limit_bytes)}</span>
+          <span>${pct.toFixed(0)}%</span>
         </div>
       </div>
-      <div class="sub-card-url-row">
-        <span class="sub-card-url-text">${esc(s.public_url)}</span>
-        <button class="sub-card-url-copy" onclick="navigator.clipboard.writeText('${esc(s.public_url)}').then(()=>toast('Public link copied','ok'))" title="Copy"><i class="ti ti-copy"></i></button>
-        <button class="sub-card-url-copy" onclick="window.open('${esc(s.public_url)}','_blank')" title="Open" aria-label="Open"><i class="ti ti-external-link"></i></button>
+      <div class="config-tear"></div>
+      <div class="config-foot">
+        <div class="meta">
+          <span><i class="ti ti-route"></i> :${l.port || 443}</span>
+          <span><i class="ti ti-users"></i> ${l.connected_ips || 0}/${l.ip_limit || '∞'}</span>
+          ${expLabel}
+        </div>
+        <div class="config-actions">
+          <button class="btn btn-secondary btn-icon btn-sm" onclick="copyRaw('${esc(l.vless_link)}')" title="Copy link"><i class="ti ti-copy"></i></button>
+          <button class="btn btn-secondary btn-icon btn-sm" onclick="showQR('${esc(l.label)}', '${esc(l.vless_link)}')" title="QR"><i class="ti ti-qrcode"></i></button>
+          <button class="btn btn-secondary btn-icon btn-sm" onclick="openEdit('${l.uuid}')" title="Edit"><i class="ti ti-edit"></i></button>
+          <button class="btn btn-secondary btn-icon btn-sm" onclick="toggleConfig('${l.uuid}', ${!l.active})" title="${l.active ? 'Disable' : 'Enable'}"><i class="ti ti-${l.active ? 'toggle-right' : 'toggle-left'}"></i></button>
+          <button class="btn btn-danger btn-icon btn-sm" onclick="askDelete('${l.uuid}', '${esc(l.label)}')" title="Delete"><i class="ti ti-trash"></i></button>
+        </div>
       </div>
-      <div class="sub-card-bottom">
-        <button class="btn btn-sm btn-g" onclick="openSubLinks('${esc(s.sub_id)}','${esc(s.name)}')"><i class="ti ti-link-plus"></i> Configs</button>
-        <button class="btn btn-sm btn-o" onclick="navigator.clipboard.writeText('${esc(s.sub_url)}').then(()=>toast('Sub link copied','ok'))"><i class="ti ti-rss"></i> Sub</button>
-        <button class="btn btn-sm btn-g btn-icon" onclick="showQR('${esc(s.sub_url)}')" title="QR" aria-label="QR"><i class="ti ti-qrcode"></i></button>
-        <button class="btn btn-sm btn-d btn-icon" onclick="deleteSub('${esc(s.sub_id)}')" title="Delete" aria-label="Delete"><i class="ti ti-trash"></i></button>
+    </div>
+  `;
+}
+
+function filterConfigs(btn){
+  document.querySelectorAll('.filters .chip').forEach(c => c.classList.remove('is-active'));
+  btn.classList.add('is-active');
+  activeFilter = btn.dataset.filter;
+  renderConfigs();
+}
+
+/* Chip preset helpers */
+function setQuota(btn){
+  document.querySelectorAll('#quota-chips .chip').forEach(c => c.classList.remove('is-active'));
+  btn.classList.add('is-active');
+  const [v, u] = btn.dataset.quota.split(',');
+  document.getElementById('nl-val').value = v === '0' ? '' : v;
+  document.getElementById('nl-unit').value = u;
+}
+function setExpiry(btn){
+  document.querySelectorAll('#exp-chips .chip').forEach(c => c.classList.remove('is-active'));
+  btn.classList.add('is-active');
+  document.getElementById('nl-exp').value = btn.dataset.exp === '0' ? '' : btn.dataset.exp;
+}
+function setSpeed(btn){
+  document.querySelectorAll('#speed-chips .chip').forEach(c => c.classList.remove('is-active'));
+  btn.classList.add('is-active');
+  document.getElementById('nl-speed').value = btn.dataset.speed;
+}
+
+async function createConfig(){
+  const body = {
+    label: document.getElementById('nl-label').value.trim() || 'New config',
+    protocol: document.getElementById('nl-protocol').value,
+    fingerprint: document.getElementById('nl-fp').value,
+    alpn: document.getElementById('nl-alpn').value.trim(),
+    sub_id: document.getElementById('nl-sub').value || null,
+    limit_value: parseFloat(document.getElementById('nl-val').value) || 0,
+    limit_unit: document.getElementById('nl-unit').value,
+    expires_days: parseInt(document.getElementById('nl-exp').value) || 0,
+    port: parseInt(document.getElementById('nl-port').value) || 443,
+    ip_limit: parseInt(document.getElementById('nl-ip').value) || 0,
+    speed_limit_value: parseFloat(document.getElementById('nl-speed').value) || 0,
+    speed_limit_unit: 'MBIT',
+  };
+  try {
+    const r = await api('/api/links', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) throw new Error('failed');
+    toast('Config created', '', 'ok');
+    ['nl-label', 'nl-val', 'nl-exp', 'nl-alpn'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('nl-port').value = '443';
+    document.getElementById('nl-ip').value = '0';
+    document.getElementById('nl-speed').value = '0';
+    loadConfigs();
+  } catch (e) { toast('Could not create config', '', 'err'); }
+}
+
+function openEdit(uuid){
+  const l = allLinks.find(x => x.uuid === uuid);
+  if (!l) return;
+  document.getElementById('el-uuid').value = uuid;
+  document.getElementById('el-label').value = l.label;
+  document.getElementById('el-note').value = l.note || '';
+  if (l.limit_bytes === 0){ document.getElementById('el-quota').value = ''; document.getElementById('el-unit').value = 'GB'; }
+  else { document.getElementById('el-quota').value = (l.limit_bytes / 1024**3).toFixed(2); document.getElementById('el-unit').value = 'GB'; }
+  document.getElementById('el-exp').value = '';
+  document.getElementById('el-fp').value = l.fingerprint || 'chrome';
+  document.getElementById('el-alpn').value = l.alpn || '';
+  document.getElementById('el-port').value = l.port || 443;
+  document.getElementById('el-ip').value = l.ip_limit || 0;
+  document.getElementById('el-speed').value = l.speed_limit_bytes ? (l.speed_limit_bytes * 8 / 1024 / 1024).toFixed(2) : 0;
+  openModal('modal-edit');
+}
+
+async function saveEditConfig(){
+  const uuid = document.getElementById('el-uuid').value;
+  const body = {
+    label: document.getElementById('el-label').value.trim(),
+    note: document.getElementById('el-note').value.trim(),
+    limit_value: parseFloat(document.getElementById('el-quota').value) || 0,
+    limit_unit: document.getElementById('el-unit').value,
+    fingerprint: document.getElementById('el-fp').value,
+    alpn: document.getElementById('el-alpn').value.trim(),
+    port: parseInt(document.getElementById('el-port').value) || 443,
+    ip_limit: parseInt(document.getElementById('el-ip').value) || 0,
+    speed_limit_value: parseFloat(document.getElementById('el-speed').value) || 0,
+    speed_limit_unit: 'MBIT',
+  };
+  const exp = parseInt(document.getElementById('el-exp').value);
+  if (exp && exp > 0) body.expires_days = exp;
+  try {
+    const r = await api('/api/links/' + uuid, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) throw new Error();
+    closeModal('modal-edit');
+    toast('Config updated', '', 'ok');
+    loadConfigs();
+  } catch (e) { toast('Could not update config', '', 'err'); }
+}
+
+async function toggleConfig(uuid, active){
+  try {
+    const r = await api('/api/links/' + uuid, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({active}),
+    });
+    if (!r.ok) throw new Error();
+    toast(active ? 'Config enabled' : 'Config disabled', '', 'ok');
+    loadConfigs();
+  } catch (e) { toast('Update failed', '', 'err'); }
+}
+
+let pendingDeleteUuid = null;
+function askDelete(uuid, label){
+  pendingDeleteUuid = uuid;
+  document.getElementById('delete-msg').innerHTML = 'Delete <strong>' + esc(label) + '</strong>? Any active sessions will be terminated.';
+  document.getElementById('delete-ok-btn').onclick = confirmDelete;
+  openModal('modal-delete');
+}
+async function confirmDelete(){
+  if (!pendingDeleteUuid) return;
+  try {
+    const r = await api('/api/links/' + pendingDeleteUuid, { method: 'DELETE' });
+    if (!r.ok) throw new Error();
+    closeModal('modal-delete');
+    toast('Config deleted', '', 'ok');
+    pendingDeleteUuid = null;
+    loadConfigs();
+  } catch (e) { toast('Delete failed', '', 'err'); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Sub-groups
+   ══════════════════════════════════════════════════════════════════════════ */
+async function loadGroups(){
+  try {
+    const r = await api('/api/subs');
+    const d = await r.json();
+    allGroups = d.subs || [];
+    document.getElementById('badge-subs').textContent = allGroups.length + ' groups';
+    document.getElementById('nb-subs').textContent = allGroups.length;
+    renderGroups();
+  } catch (e) { toast('Could not load groups', '', 'err'); }
+}
+
+function renderGroups(){
+  const grid = document.getElementById('group-grid');
+  const empty = document.getElementById('group-empty');
+  const q = (document.getElementById('sub-search').value || '').trim().toLowerCase();
+  let list = allGroups;
+  if (q) list = list.filter(g => (g.name || '').toLowerCase().includes(q) || (g.desc || '').toLowerCase().includes(q));
+  if (!list.length){ grid.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  grid.innerHTML = list.map(g => `
+    <div class="group-card">
+      <div class="group-head">
+        <div class="group-icon"><i class="ti ti-folder"></i></div>
+        <div style="flex:1;min-width:0">
+          <div class="group-name">${esc(g.name)}</div>
+          <div class="group-desc">${esc(g.desc || 'No description')}</div>
+        </div>
+        <i class="ti ${g.has_password ? 'ti-lock' : 'ti-lock-open'}" style="color:${g.has_password ? 'var(--warn-fg)' : 'var(--ok-fg)'}"></i>
+      </div>
+      <div class="group-url" title="${esc(g.public_url)}">${esc(g.public_url)}</div>
+      <div class="group-stats">
+        <div class="group-stat"><div class="v">${g.links_count}</div><div class="l">configs</div></div>
+        <div class="group-stat"><div class="v">${g.active_count}</div><div class="l">active</div></div>
+        <div class="group-stat"><div class="v">${esc(g.total_used_fmt)}</div><div class="l">used</div></div>
+      </div>
+      <div class="row">
+        <button class="btn btn-secondary btn-sm" onclick="openPicker('${esc(g.sub_id)}', '${esc(g.name)}')"><i class="ti ti-link-plus"></i> Configs</button>
+        <button class="btn btn-secondary btn-sm" onclick="copyRaw('${esc(g.sub_url)}')"><i class="ti ti-rss"></i> Sub</button>
+        <button class="btn btn-secondary btn-sm" onclick="copyRaw('${esc(g.public_url)}')"><i class="ti ti-globe"></i> Public</button>
+        <button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="deleteGroup('${esc(g.sub_id)}', '${esc(g.name)}')"><i class="ti ti-trash"></i></button>
       </div>
     </div>
   `).join('');
 }
-function filterSubs(q){
-  q=q.trim().toLowerCase();
-  if(!q){renderSubsGrid(allSubsRaw);return}
-  renderSubsGrid(allSubsRaw.filter(s=>s.name.toLowerCase().includes(q)||(s.desc||'').toLowerCase().includes(q)));
+
+async function createGroup(){
+  const name = document.getElementById('ns-name').value.trim() || 'New group';
+  const desc = document.getElementById('ns-desc').value.trim();
+  const pw = document.getElementById('ns-pw').value;
+  try {
+    const r = await api('/api/subs', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({name, desc, password: pw}),
+    });
+    if (!r.ok) throw new Error();
+    ['ns-name', 'ns-desc', 'ns-pw'].forEach(id => document.getElementById(id).value = '');
+    closeModal('modal-newsub');
+    toast('Group created', '', 'ok');
+    loadGroups();
+  } catch (e) { toast('Could not create group', '', 'err'); }
 }
-async function createSub(){
-  const name=document.getElementById('ns-name').value.trim()||'New group';
-  const desc=document.getElementById('ns-desc').value.trim();
-  const pw=document.getElementById('ns-pw').value;
-  try{
-    const r=await authF('/api/subs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,desc,password:pw})});
-    if(!r.ok)throw new Error('failed');
-    ['ns-name','ns-desc','ns-pw'].forEach(id=>document.getElementById(id).value='');
-    closeModal('modal-create-sub');
-    toast('Group created ✓','ok');loadSubs();
-  }catch(e){toast('Could not create group','err')}
+
+async function deleteGroup(sub_id, name){
+  if (!confirm('Delete group "' + name + '"? Configs inside it will not be deleted.')) return;
+  try {
+    const r = await api('/api/subs/' + sub_id, { method: 'DELETE' });
+    if (!r.ok) throw new Error();
+    toast('Group deleted', '', 'ok');
+    loadGroups();
+    loadConfigs();
+  } catch (e) { toast('Delete failed', '', 'err'); }
 }
-async function deleteSub(sub_id){
-  if(!confirm('Delete this group? Its configs will not be deleted.'))return;
-  try{const r=await authF('/api/subs/'+sub_id,{method:'DELETE'});if(!r.ok)throw new Error();toast('Group deleted ✓','ok');loadSubs();loadLinks();}catch(e){toast('Error','err')}
+
+/* ── Picker ── */
+let pickerSubId = null;
+let pickerSelection = new Set();
+async function openPicker(subId, groupName){
+  pickerSubId = subId;
+  document.getElementById('pick-title').textContent = 'Manage "' + groupName + '"';
+  document.getElementById('pick-search').value = '';
+  const r = await api('/api/subs');
+  const d = await r.json();
+  const group = (d.subs || []).find(g => g.sub_id === subId);
+  pickerSelection = new Set(group?.link_ids || []);
+  renderPickerList();
+  openModal('modal-pick');
 }
-let lmodalLinks=[],lmodalInSub=new Set();
-async function openSubLinks(sub_id,name){
-  currentSubId=sub_id;
-  document.getElementById('modal-sub-name').textContent=name;
-  document.getElementById('modal-links-body').innerHTML='<div style="color:var(--t3);font-size:12px;padding:20px;text-align:center"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite;font-size:20px"></i></div>';
-  document.getElementById('lmodal-search-inp').value='';
-  openModal('modal-links');
-  try{
-    const [lr,sr]=await Promise.all([authF('/api/links'),authF('/api/subs')]);
-    const {links=[]}=await lr.json();
-    const {subs=[]}=await sr.json();
-    const thisSub=subs.find(s=>s.sub_id===sub_id);
-    lmodalInSub=new Set(thisSub?.link_ids||[]);
-    lmodalLinks=links;
-    renderLmodalList(links);
-  }catch(e){toast('Failed to load','err')}
+function renderPickerList(){
+  const host = document.getElementById('pick-list');
+  if (!allLinks.length){ host.innerHTML = '<div class="text-sm text-muted">No configs available.</div>'; return; }
+  host.innerHTML = allLinks.map(l => `
+    <label class="picker-row">
+      <input type="checkbox" ${pickerSelection.has(l.uuid) ? 'checked' : ''} onchange="togglePicker('${l.uuid}', this.checked)">
+      <span class="lbl">${esc(l.label)}</span>
+      <span class="meta">${fmtB(l.used_bytes)}</span>
+    </label>
+  `).join('');
 }
-function renderLmodalList(links){
-  const body=document.getElementById('modal-links-body');
-  if(!links.length){body.innerHTML='<div class="empty" style="padding:30px"><i class="ti ti-link-off"></i><p>No configs yet</p></div>';updateLmodalCount();return}
-  body.innerHTML=links.map(l=>{
-    const checked=lmodalInSub.has(l.uuid);
-    const on=l.active&&!l.expired;
-    return `<div tabindex="0" role="button" class="lrow-v2 ${checked?'checked':''}" data-uuid="${l.uuid}" data-name="${esc(l.label).toLowerCase()}" onclick="toggleLrow('${l.uuid}',this)">
-      <div tabindex="0" role="button" class="lrow-v2-check"><i class="ti ti-check"></i></div>
-      <div tabindex="0" role="button" class="lrow-v2-avatar"><i class="ti ti-key"></i></div>
-      <div tabindex="0" role="button" class="lrow-v2-info">
-        <div tabindex="0" role="button" class="lrow-v2-name">${esc(l.label)}</div>
-        <div tabindex="0" role="button" class="lrow-v2-meta"><i class="ti ti-database" style="font-size:10px"></i> ${fmtB(l.used_bytes)}</div>
-      </div>
-      <span tabindex="0" role="button" class="lrow-v2-status ${on?'on':'off'}">${on?'Active':'Disabled'}</span>
-    </div>`;
-  }).join('');
-  updateLmodalCount();
+function togglePicker(uuid, checked){
+  if (checked) pickerSelection.add(uuid); else pickerSelection.delete(uuid);
 }
-function toggleLrow(uuid,el){
-  if(lmodalInSub.has(uuid)){lmodalInSub.delete(uuid);el.classList.remove('checked')}
-  else{lmodalInSub.add(uuid);el.classList.add('checked')}
-  updateLmodalCount();
-}
-function lmodalSelectAll(state){
-  lmodalLinks.forEach(l=>{if(state)lmodalInSub.add(l.uuid);else lmodalInSub.delete(l.uuid)});
-  renderLmodalList(lmodalLinks);
-}
-function updateLmodalCount(){
-  const el=document.getElementById('lmodal-count');
-  if(el)el.textContent=toFa(lmodalInSub.size)+' selected';
-}
-function filterLmodal(q){
-  q=q.trim().toLowerCase();
-  document.querySelectorAll('#modal-links-body .lrow-v2').forEach(row=>{
-    row.style.display = !q || row.dataset.name.includes(q) ? '' : 'none';
+function filterPicker(q){
+  q = q.trim().toLowerCase();
+  document.querySelectorAll('.picker-row').forEach(row => {
+    const lbl = row.querySelector('.lbl').textContent.toLowerCase();
+    row.style.display = (!q || lbl.includes(q)) ? '' : 'none';
   });
 }
-async function saveSubLinks(){
-  if(!currentSubId)return;
-  const link_ids=[...lmodalInSub];
-  try{
-    const r=await authF('/api/subs/'+currentSubId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({link_ids})});
-    if(!r.ok)throw new Error();
-    await Promise.all(lmodalLinks.map(l=>
-      authF('/api/links/'+l.uuid,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({sub_id:lmodalInSub.has(l.uuid)?currentSubId:null})})
-    ));
-    closeModal('modal-links');
-    toast('Group configs saved ✓','ok');
-    loadSubs();loadLinks();
-  }catch(e){toast('Could not save','err')}
+async function savePicker(){
+  if (!pickerSubId) return;
+  const ids = [...pickerSelection];
+  try {
+    // Update the group's link_ids
+    await api('/api/subs/' + pickerSubId, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({link_ids: ids}),
+    });
+    // Update each link's sub_id
+    await Promise.all(allLinks.map(l => api('/api/links/' + l.uuid, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({sub_id: pickerSelection.has(l.uuid) ? pickerSubId : null}),
+    })));
+    closeModal('modal-pick');
+    toast('Group configs updated', '', 'ok');
+    loadGroups();
+    loadConfigs();
+  } catch (e) { toast('Save failed', '', 'err'); }
 }
-async function loadSubsPage(){
-  document.getElementById('sub-all-url').textContent=location.protocol+'//'+location.host+'/sub-all';
-  try{
-    const r=await authF('/api/subs'),d=await r.json();
-    const subs=d.subs||[];
-    const el=document.getElementById('sub-groups-list');
-    if(!subs.length){el.innerHTML='<div class="empty"><i class="ti ti-rss-off"></i><p>No groups yet</p></div>';return}
-    el.innerHTML=subs.map(s=>`
-      <div style="padding:13px 15px;background:var(--accent-d);border:1px solid var(--card-b);border-radius:10px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-        <div>
-          <div style="font-weight:700;font-size:13px;margin-bottom:3px">${esc(s.name)}</div>
-          <div style="font-family:ui-monospace,monospace;font-size:10px;color:var(--purple)">${esc(s.sub_url)}</div>
-          <div style="font-size:10px;color:var(--t3);margin-top:3px">${toFa(s.links_count)} configs · ${esc(s.total_used_fmt)} used ${s.has_password?'· 🔒 Password protected':''}</div>
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Subscriptions page
+   ══════════════════════════════════════════════════════════════════════════ */
+function loadSubsPage(){
+  document.getElementById('sub-all-url').textContent = location.origin + '/sub-all';
+  const host = document.getElementById('sub-groups-list');
+  if (!allGroups.length){
+    host.innerHTML = '<div class="text-sm text-muted">No groups yet.</div>';
+    return;
+  }
+  host.innerHTML = allGroups.map(g => `
+    <div class="sub-list-row">
+      <div class="info">
+        <div class="name">${esc(g.name)}</div>
+        <div class="url">${esc(g.sub_url)}</div>
+        <div style="font-size:var(--fs-11);color:var(--fg-3);margin-top:2px">${g.links_count} configs · ${esc(g.total_used_fmt)} used${g.has_password ? ' · password-protected' : ''}</div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-secondary btn-sm" onclick="copyRaw('${esc(g.sub_url)}')"><i class="ti ti-copy"></i></button>
+        <button class="btn btn-secondary btn-sm" onclick="copyRaw('${esc(g.public_url)}')"><i class="ti ti-globe"></i></button>
+        <button class="btn btn-secondary btn-sm" onclick="showQR('${esc(g.name)}', '${esc(g.sub_url)}')"><i class="ti ti-qrcode"></i></button>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Traffic page
+   ══════════════════════════════════════════════════════════════════════════ */
+async function refreshTraffic(){
+  try {
+    const r = await api('/stats');
+    const d = await r.json();
+    document.getElementById('t-total').innerHTML = d.total_traffic_mb.toFixed(1) + '<span class="unit">MB</span>';
+    const hourly = d.hourly || {};
+    const vals = Object.values(hourly).map(v => v / 1024**2);
+    if (vals.length){
+      const avg = vals.reduce((a,b)=>a+b,0) / vals.length;
+      const peak = Math.max(...vals);
+      const low = Math.min(...vals);
+      document.getElementById('t-avg').innerHTML = avg.toFixed(1) + '<span class="unit">MB</span>';
+      document.getElementById('t-peak').innerHTML = peak.toFixed(1) + '<span class="unit">MB</span>';
+      document.getElementById('t-low').innerHTML = low.toFixed(1) + '<span class="unit">MB</span>';
+    }
+    updateTrafficChart(hourly);
+  } catch (e) {}
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Connections
+   ══════════════════════════════════════════════════════════════════════════ */
+async function loadConnections(){
+  try {
+    const r = await api('/api/connections');
+    const d = await r.json();
+    document.getElementById('conn-live-badge').innerHTML = '<span class="dot ok live"></span> ' + d.count + ' connections';
+    document.getElementById('ch-count').textContent = d.count;
+    const conns = d.connections || [];
+    if (!conns.length){
+      document.getElementById('conn-grid').innerHTML = '';
+      document.getElementById('conn-empty').style.display = 'block';
+      document.getElementById('ch-traffic').textContent = '—';
+      document.getElementById('ch-avgdur').textContent = '—';
+      document.getElementById('ch-uniq').textContent = '—';
+      return;
+    }
+    document.getElementById('conn-empty').style.display = 'none';
+    const totalBytes = conns.reduce((s,c) => s + (c.bytes || 0), 0);
+    document.getElementById('ch-traffic').textContent = fmtB(totalBytes);
+    document.getElementById('ch-uniq').textContent = new Set(conns.map(c => c.ip)).size;
+    const durs = conns.map(c => c.connected_at ? Math.floor((Date.now() - new Date(c.connected_at).getTime()) / 1000) : 0);
+    const avg = durs.length ? Math.floor(durs.reduce((a,b)=>a+b,0) / durs.length) : 0;
+    document.getElementById('ch-avgdur').textContent = formatDuration(avg);
+
+    document.getElementById('conn-grid').innerHTML = conns.map(c => {
+      const secs = c.connected_at ? Math.floor((Date.now() - new Date(c.connected_at).getTime()) / 1000) : 0;
+      return `
+        <div class="conn-card">
+          <div class="conn-head">
+            <div class="conn-avatar"><i class="ti ti-device-mobile"></i></div>
+            <div style="flex:1;min-width:0">
+              <div class="conn-ip">${esc(c.ip)}</div>
+              <div class="conn-label">${esc(c.label || '—')}</div>
+            </div>
+            <span class="status-pill online"><span class="dot ok live"></span> Live</span>
+          </div>
+          <div class="conn-body">
+            <div class="conn-stat"><div class="l">Traffic</div><div class="v">${esc(c.bytes_fmt || fmtB(c.bytes || 0))}</div></div>
+            <div class="conn-stat"><div class="l">Duration</div><div class="v">${formatDuration(secs)}</div></div>
+          </div>
         </div>
-        <div style="display:flex;gap:5px;flex-wrap:wrap">
-          <button class="btn btn-sm btn-pur" onclick="navigator.clipboard.writeText('${esc(s.sub_url)}').then(()=>toast('Copied','ok'))"><i class="ti ti-copy"></i> Sub</button>
-          <button class="btn btn-sm btn-pur" onclick="navigator.clipboard.writeText('${esc(s.public_url)}').then(()=>toast('Copied','ok'))"><i class="ti ti-globe"></i> Public</button>
-          <button class="btn btn-sm btn-g" onclick="showQR('${esc(s.sub_url)}')"><i class="ti ti-qrcode"></i></button>
+      `;
+    }).join('');
+  } catch (e) { /* silent */ }
+}
+function formatDuration(s){
+  if (s < 60) return s + 's';
+  if (s < 3600) return Math.floor(s / 60) + 'm';
+  return Math.floor(s / 3600) + 'h ' + (Math.floor((s % 3600) / 60)) + 'm';
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Activity / Errors
+   ══════════════════════════════════════════════════════════════════════════ */
+async function loadActivity(){
+  try {
+    const r = await api('/api/activity');
+    const d = await r.json();
+    const logs = (d.logs || []).slice().reverse();
+    const host = document.getElementById('logs-list');
+    if (!logs.length){ host.innerHTML = '<div class="text-sm text-muted">No activity yet.</div>'; return; }
+    const icons = { ok: 'ti-circle-check', err: 'ti-circle-x', warn: 'ti-alert-triangle', info: 'ti-info-circle' };
+    host.innerHTML = logs.map(l => `
+      <div class="log-item">
+        <div class="log-ic ${l.level}"><i class="ti ${icons[l.level] || icons.info}"></i></div>
+        <div class="log-body">
+          <div class="log-msg">${esc(l.message)}</div>
+          <div class="log-time"><i class="ti ti-clock"></i> ${new Date(l.time).toLocaleString()} <span class="log-kind">${esc(l.kind)}</span></div>
         </div>
       </div>
     `).join('');
-  }catch(e){}
+  } catch (e) {}
 }
-function cpSubAll(){navigator.clipboard.writeText(location.protocol+'//'+location.host+'/sub-all').then(()=>toast('Copied ✓','ok'))}
-function parseBytesFmt(s){
-  if(!s)return 0;
-  const m=String(s).match(/([\d.]+)\s*([A-Za-z]+)/);
-  if(!m)return 0;
-  const n=parseFloat(m[1]),u=m[2].toUpperCase();
-  const mult={B:1,KB:1024,MB:1024**2,GB:1024**3,TB:1024**4};
-  return n*(mult[u]||1);
-}
-async function loadConns(){
-  try{
-    const r=await authF('/api/connections'),d=await r.json();
-    const grid=document.getElementById('conns-grid'),ce=document.getElementById('conns-empty');
-    document.getElementById('conns-live').innerHTML='<span class="dot dg pulse"></span> '+d.count+' connections';
-    document.getElementById('ch-count').textContent=toFa(d.count);
-    const conns=d.connections||[];
-    if(!d.count){
-      grid.innerHTML='';ce.style.display='block';
-      document.getElementById('ch-traffic').textContent='—';
-      document.getElementById('ch-avgdur').textContent='—';
-      document.getElementById('ch-uniq').textContent='—';
-      return;
-    }
-    ce.style.display='none';
-    const totalBytes=conns.reduce((s,c)=>s+parseBytesFmt(c.bytes_fmt),0);
-    document.getElementById('ch-traffic').textContent=fmtB(totalBytes);
-    const uniqIps=new Set(conns.map(c=>c.ip)).size;
-    document.getElementById('ch-uniq').textContent=toFa(uniqIps);
-    const durs=conns.map(c=>c.connected_at?Math.max(0,Math.floor((Date.now()-new Date(c.connected_at).getTime())/1000)):0);
-    const avgSec=durs.length?Math.floor(durs.reduce((a,b)=>a+b,0)/durs.length):0;
-    document.getElementById('ch-avgdur').textContent=avgSec<60?avgSec+'s':avgSec<3600?Math.floor(avgSec/60)+'m':Math.floor(avgSec/3600)+'h';
-    const maxDur=Math.max(...durs,1);
-    grid.innerHTML=conns.map(c=>{
-      const secs=c.connected_at?Math.max(0,Math.floor((Date.now()-new Date(c.connected_at).getTime())/1000)):0;
-      const dur=secs<60?secs+'s':secs<3600?Math.floor(secs/60)+'m':Math.floor(secs/3600)+'h';
-      const durPct=Math.min(100,Math.round((secs/maxDur)*100));
-      const protoVal=c.transport==='vless-ws'?'vless-ws':(c.transport||'').replace('xhttp-','xhttp-');
-      return `<div class="conn-card-v2">
-        <div class="conn-card-v2-glow"></div>
-        <div class="conn-card-v2-top">
-          <div class="conn-avatar"><i class="ti ti-device-desktop"></i></div>
-          <div class="conn-card-v2-id">
-            <div class="conn-ip-v2">${esc(c.ip)}
-              <button class="conn-ip-copy" onclick="navigator.clipboard.writeText('${esc(c.ip)}').then(()=>toast('IP Copied','ok'))" title="Copy IP"><i class="ti ti-copy"></i></button>
-            </div>
-            <div class="conn-label-v2">${esc(c.label)}</div>
-          </div>
-          <span class="conn-status-pill"><span class="dot dg pulse"></span> Live</span>
-        </div>
-        <div class="conn-card-v2-divider"></div>
-        <div class="conn-card-v2-body">
-          <div class="conn-proto-row">${protoBadge(protoVal)}</div>
-          <div class="conn-stat-row">
-            <div class="conn-stat-box">
-              <div class="conn-stat-icon"><i class="ti ti-transfer"></i></div>
-              <div>
-                <div class="conn-stat-text-label">Traffic</div>
-                <div class="conn-stat-text-val">${esc(c.bytes_fmt)}</div>
-              </div>
-            </div>
-            <div class="conn-stat-box">
-              <div class="conn-stat-icon time"><i class="ti ti-clock"></i></div>
-              <div>
-                <div class="conn-stat-text-label">Session length</div>
-                <div class="conn-stat-text-val">${dur}</div>
-              </div>
-            </div>
-          </div>
-          <div class="conn-duration-track"><div class="conn-duration-fill" style="width:${durPct}%"></div></div>
-        </div>
-      </div>`;
-    }).join('');
-  }catch(e){console.error(e)}
-}
-async function loadErrs(){try{const r=await authF('/stats'),d=await r.json();renderErrs(d.recent_errors||[]);}catch(e){}}
-async function fetchDefaultVless(){
-  try{const r=await authF('/api/links'),d=await r.json();const links=d.links||[];const def=links.find(l=>l.limit_bytes===0&&l.active&&!l.expired)||links.find(l=>l.active&&!l.expired)||links[0];document.getElementById('vless-main').textContent=def?def.vless_link:'No configs yet';}catch(e){}
-}
-function cpText(id){navigator.clipboard.writeText(document.getElementById(id).textContent).then(()=>toast('Copied ✓','ok'))}
-function qrFor(id){showQR(document.getElementById(id).textContent)}
-function refreshAll(){fetchStats();fetchDefaultVless();loadLinks();if(document.getElementById('pg-subgroups').classList.contains('on'))loadSubs();if(document.getElementById('pg-subscriptions').classList.contains('on'))loadSubsPage();if(document.getElementById('pg-connections').classList.contains('on'))loadConns();if(document.getElementById('pg-logs').classList.contains('on'))loadActivity();toast('Refreshed','ok')}
-async function changePw(){
-  const cur=document.getElementById('cp-cur').value,nw=document.getElementById('cp-new').value,cf=document.getElementById('cp-cf').value;
-  if(!cur||!nw||!cf){toast('Fill in all fields','err');return}
-  if(nw.length<4){toast('At least 4 characters','err');return}
-  if(nw!==cf){toast('Passwords do not match','err');return}
-  try{
-    const r=await authF('/api/change-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({current_password:cur,new_password:nw})});
-    const d=await r.json().catch(()=>({}));
-    if(!r.ok)throw new Error(d.detail||'Error');
-    toast('Password updated ✓','ok');
-    ['cp-cur','cp-new','cp-cf'].forEach(id=>document.getElementById(id).value='');
-  }catch(e){toast('✗ '+e.message,'err')}
-}
-function togglePwField(id,btn){
-  const inp=document.getElementById(id);
-  const icon=btn.querySelector('i');
-  const toText=inp.type==='password';
-  inp.type=toText?'text':'password';
-  icon.className='ti '+(toText?'ti-eye-off':'ti-eye');
-}
-function checkPwStrength(val){
-  const segs=document.querySelectorAll('#pw-strength-bar .pw-strength-seg');
-  const label=document.getElementById('pw-strength-label');
-  const reqLen=document.getElementById('req-len'),reqNum=document.getElementById('req-num'),reqCase=document.getElementById('req-case');
-  const hasLen=val.length>=4,hasNum=/\d/.test(val),hasCase=/[a-z]/.test(val)&&/[A-Z]/.test(val),hasLong=val.length>=8;
-  reqLen.classList.toggle('met',hasLen);
-  reqNum.classList.toggle('met',hasNum);
-  reqCase.classList.toggle('met',hasCase);
-  let score=0;if(hasLen)score++;if(hasNum)score++;if(hasCase)score++;if(hasLong)score++;
-  const colors=[cv('--red'),cv('--amber'),cv('--accent'),cv('--green')],labels=['Very weak','Weak','Fair','Strong'];
-  segs.forEach((s,i)=>{s.style.background=i<score?colors[Math.max(0,score-1)]:cv('--bg3')});
-  if(val.length===0){label.innerHTML='<i class="ti ti-shield"></i> Password strength';return}
-  label.innerHTML=`<i class="ti ti-shield-check" style="color:${colors[Math.max(0,score-1)]}"></i> ${labels[Math.max(0,score-1)]}`;
-}
-function makeGradient(ctx,color1,color2){
-  const g=ctx.createLinearGradient(0,0,0,260);
-  g.addColorStop(0,color1);g.addColorStop(1,color2);
-  return g;
-}
-function cv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()}
-function hexA(h,a){h=h.replace('#','');return 'rgba('+parseInt(h.slice(0,2),16)+','+parseInt(h.slice(2,4),16)+','+parseInt(h.slice(4,6),16)+','+a+')'}
-function restyleCharts(){
-  const a=cv('--accent'),t3=cv('--t3'),bd=cv('--card-b');
-  [typeof ch1!=='undefined'?ch1:null,typeof ch3!=='undefined'?ch3:null].forEach(c=>{
-    if(!c)return;
-    const o=c.options;
-    o.scales.x.ticks.color=t3;o.scales.y.ticks.color=t3;o.scales.y.grid.color=bd;
-    const tp=o.plugins.tooltip;tp.backgroundColor=cv('--card');tp.borderColor=bd;tp.titleColor=cv('--t1');tp.bodyColor=cv('--t2');
-    const d=c.data.datasets[0];d.borderColor=a;
-    const g=c.ctx.createLinearGradient(0,0,0,c.height||300);g.addColorStop(0,hexA(a,.4));g.addColorStop(1,hexA(a,0));d.backgroundColor=g;
-    if(c.data.datasets[1])c.data.datasets[1].borderColor=cv('--amber');
-    c.update('none');
-  });
-  if(typeof ch2!=='undefined'&&ch2){
-    const d=ch2.data.datasets[0];d.backgroundColor=[a,cv('--purple'),cv('--amber')];d.borderColor=cv('--card');
-    ch2.options.plugins.legend.labels.color=cv('--t2');ch2.update('none');
-  }
-}
-function initCharts(){
-  const c1=document.getElementById('ch1').getContext('2d');
-  const grad1=makeGradient(c1,hexA(cv('--accent'),.4),hexA(cv('--accent'),0));
-  const opts={
-    responsive:true,maintainAspectRatio:false,
-    interaction:{mode:'index',intersect:false},
-    plugins:{
-      legend:{display:false},
-      tooltip:{
-        backgroundColor:cv('--card'),borderColor:cv('--card-b'),borderWidth:1,
-        titleColor:cv('--t1'),bodyColor:cv('--t2'),padding:11,cornerRadius:10,displayColors:false,
-        titleFont:{family:'system-ui',size:11,weight:'700'},bodyFont:{family:'system-ui',size:11},
-        callbacks:{label:v=>`${v.parsed.y.toFixed(2)} MB`}
-      }
-    },
-    scales:{
-      x:{grid:{display:false},border:{display:false},ticks:{color:cv('--t3'),font:{size:9,family:'system-ui'}}},
-      y:{grid:{color:cv('--card-b')},border:{display:false},ticks:{color:cv('--t3'),font:{size:9,family:'system-ui'},callback:v=>v+' MB'}}
-    },
-    elements:{line:{capBezierPoints:true}}
-  };
-  const ds1={label:'MB',data:[],borderColor:cv('--accent'),backgroundColor:grad1,fill:true,tension:.42,pointRadius:0,pointHoverRadius:6,pointHoverBackgroundColor:cv('--accent'),pointHoverBorderColor:'#fff',pointHoverBorderWidth:2,borderWidth:2.5};
-  ch1=new Chart(document.getElementById('ch1'),{type:'line',data:{labels:[],datasets:[ds1]},options:opts});
 
-  function makeGradientV2(ctx,c1,c2,c3){
-    const g=ctx.createLinearGradient(0,0,0,320);
-    g.addColorStop(0,c1);g.addColorStop(.6,c2);g.addColorStop(1,c3);
-    return g;
-  }
-  const c3ctx=document.getElementById('ch3').getContext('2d');
-  const gradFill3=makeGradientV2(c3ctx,hexA(cv('--accent'),.4),hexA(cv('--accent'),.08),hexA(cv('--accent'),0));
-  ch3=new Chart(document.getElementById('ch3'),{
-    type:'line',
-    data:{labels:[],datasets:[
-      {label:'Usage',data:[],borderColor:cv('--accent'),backgroundColor:gradFill3,fill:true,tension:.45,pointRadius:0,pointHoverRadius:7,pointHoverBackgroundColor:'#fff',pointHoverBorderColor:cv('--accent'),pointHoverBorderWidth:3,borderWidth:3,order:2},
-      {label:'Average',data:[],borderColor:cv('--amber'),borderDash:[6,5],borderWidth:1.6,pointRadius:0,fill:false,tension:0,order:1}
-    ]},
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      interaction:{mode:'index',intersect:false},
-      plugins:{
-        legend:{display:false},
-        tooltip:{
-          backgroundColor:cv('--card'),borderColor:cv('--card-b'),borderWidth:1,
-          titleColor:cv('--t1'),bodyColor:cv('--t2'),padding:13,cornerRadius:12,displayColors:true,boxPadding:4,
-          titleFont:{family:'system-ui',size:11.5,weight:'700'},bodyFont:{family:'system-ui',size:11},
-          callbacks:{label:v=>` ${v.dataset.label}: ${v.parsed.y.toFixed(2)} MB`}
-        }
-      },
-      scales:{
-        x:{grid:{display:false},border:{display:false},ticks:{color:cv('--t3'),font:{size:9.5,family:'system-ui'},maxRotation:0}},
-        y:{grid:{color:cv('--card-b')},border:{display:false},ticks:{color:cv('--t3'),font:{size:9.5,family:'system-ui'},callback:v=>v+' MB'}}
-      }
-    }
-  });
-
-  ch2=new Chart(document.getElementById('ch2'),{
-    type:'doughnut',
-    data:{labels:['VLESS/WS','XHTTP Ultra','HTTP Proxy'],datasets:[{
-      data:[55,35,10],
-      backgroundColor:[cv('--accent'),cv('--purple'),cv('--amber')],
-      borderColor:getComputedStyle(document.documentElement).getPropertyValue('--card')||'#0f1923',
-      borderWidth:4,hoverOffset:10,borderRadius:6,spacing:3
-    }]},
-    options:{
-      responsive:true,maintainAspectRatio:false,cutout:'72%',
-      plugins:{
-        legend:{position:'bottom',labels:{color:cv('--t2'),font:{size:10,family:'system-ui'},padding:12,usePointStyle:true,pointStyle:'circle'}},
-        tooltip:{backgroundColor:cv('--card'),borderColor:cv('--card-b'),borderWidth:1,padding:10,cornerRadius:10,bodyFont:{family:'system-ui'},titleFont:{family:'system-ui'}}
-      }
-    }
-  });
+async function loadErrors(){
+  try {
+    const r = await api('/stats');
+    const d = await r.json();
+    renderErrors(d.recent_errors || []);
+  } catch (e) {}
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Settings — change password
+   ══════════════════════════════════════════════════════════════════════════ */
+function updatePwStrength(val){
+  const el = document.getElementById('pw-strength');
+  el.className = 'pw-strength';
+  const hasLen = val.length >= 4;
+  const hasNum = /\d/.test(val);
+  const hasCase = /[a-z]/.test(val) && /[A-Z]/.test(val);
+  const hasLong = val.length >= 8;
+  let score = 0;
+  if (hasLen) score++;
+  if (hasNum) score++;
+  if (hasCase) score++;
+  if (hasLong) score++;
+  if (val.length) el.classList.add('l' + score);
+  document.getElementById('req-len').classList.toggle('met', hasLen);
+  document.getElementById('req-num').classList.toggle('met', hasNum);
+  document.getElementById('req-case').classList.toggle('met', hasCase);
+  document.getElementById('req-long').classList.toggle('met', hasLong);
+}
+
+async function changePassword(){
+  const cur = document.getElementById('cp-current').value;
+  const nw = document.getElementById('cp-new').value;
+  const cf = document.getElementById('cp-confirm').value;
+  if (!cur || !nw || !cf){ toast('All fields required', '', 'err'); return; }
+  if (nw.length < 4){ toast('Minimum 4 characters', '', 'err'); return; }
+  if (nw !== cf){ toast('Passwords do not match', '', 'err'); return; }
+  try {
+    const r = await api('/api/change-password', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({current_password: cur, new_password: nw}),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.detail || 'Failed');
+    toast('Password updated', '', 'ok');
+    ['cp-current', 'cp-new', 'cp-confirm'].forEach(id => document.getElementById(id).value = '');
+  } catch (e) { toast(e.message || 'Failed', '', 'err'); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Modals
+   ══════════════════════════════════════════════════════════════════════════ */
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-backdrop').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.querySelectorAll('.modal-backdrop.open').forEach(m => m.classList.remove('open'));
+});
+
+/* QR */
+let qrText = '';
+function showQR(label, text){
+  qrText = text;
+  document.getElementById('qr-title').textContent = label;
+  document.getElementById('qr-img').src = 'https://api.qrserver.com/v1/create-qr-code/?size=440x440&data=' + encodeURIComponent(text);
+  openModal('modal-qr');
+}
+function copyQRText(){
+  if (qrText) copyRaw(qrText);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   WebSocket test
+   ══════════════════════════════════════════════════════════════════════════ */
 let ws;
-function wsLog(c,m){const l=document.getElementById('ws-log'),p=document.createElement('p');const colors={ok:'var(--green-t)',err:'var(--red-t)',info:'var(--t2)',sent:'var(--amber-t)'};p.style.color=colors[c]||'var(--t1)';p.textContent='['+new Date().toLocaleTimeString('en-US')+'] '+m;l.appendChild(p);l.scrollTop=l.scrollHeight}
-function wsConn(){const u=document.getElementById('ws-uuid').value.trim();if(!u){toast('Enter a UUID','err');return}const url=(location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws/'+u;wsLog('info','Connecting: '+url);ws=new WebSocket(url);ws.onopen=()=>wsLog('ok','✓ Connected - valid UUID');ws.onerror=()=>wsLog('err','✗ Error - invalid or disabled UUID');ws.onmessage=m=>wsLog('info','Received '+(m.data.size||m.data.length)+' byte');ws.onclose=e=>wsLog('err','Disconnected ('+e.code+')'+(e.code===1008?' - Access denied':''))}
-function wsSend(){const m=document.getElementById('ws-msg').value;if(!m||!ws||ws.readyState!==1)return;ws.send(m);wsLog('sent','Sent: '+m);document.getElementById('ws-msg').value=''}
-function wsDisc(){if(ws)ws.close()}
-document.addEventListener('DOMContentLoaded',async()=>{
+function wsLog(color, txt){
+  const host = document.getElementById('ws-log');
+  const p = document.createElement('div');
+  p.style.color = color;
+  p.textContent = '[' + new Date().toLocaleTimeString() + '] ' + txt;
+  host.appendChild(p);
+  host.scrollTop = host.scrollHeight;
+}
+function wsConnect(){
+  const uuid = document.getElementById('ws-uuid').value.trim();
+  if (!uuid){ toast('UUID required', '', 'err'); return; }
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(proto + '://' + location.host + '/ws/' + uuid);
+  ws.onopen = () => wsLog('var(--ok-fg)', 'Connected');
+  ws.onerror = () => wsLog('var(--err-fg)', 'Error — invalid or inactive UUID');
+  ws.onmessage = m => wsLog('var(--fg-1)', 'Received ' + (m.data.size || m.data.length) + ' bytes');
+  ws.onclose = e => wsLog('var(--err-fg)', 'Closed (' + e.code + ')' + (e.code === 1008 ? ' — access denied' : ''));
+}
+function wsSend(){
+  const msg = document.getElementById('ws-msg').value;
+  if (!msg || !ws || ws.readyState !== 1) return;
+  ws.send(msg);
+  wsLog('var(--warn-fg)', 'Sent: ' + msg);
+  document.getElementById('ws-msg').value = '';
+}
+function wsClose(){ if (ws) ws.close(); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Charts
+   ══════════════════════════════════════════════════════════════════════════ */
+let chartHourly, chartDist, chartTraffic;
+
+function chartTheme(){
+  const cs = getComputedStyle(document.documentElement);
+  return {
+    fg2: cs.getPropertyValue('--fg-2').trim(),
+    fg3: cs.getPropertyValue('--fg-3').trim(),
+    line1: cs.getPropertyValue('--line-1').trim(),
+    brand: cs.getPropertyValue('--brand').trim(),
+    brandLo: cs.getPropertyValue('--brand-lo').trim(),
+    okFg: cs.getPropertyValue('--ok-fg').trim(),
+    infoFg: cs.getPropertyValue('--info-fg').trim(),
+    warnFg: cs.getPropertyValue('--warn-fg').trim(),
+    bg1: cs.getPropertyValue('--bg-1').trim(),
+  };
+}
+
+function initCharts(){
+  const t = chartTheme();
+
+  // Hourly line
+  const ctxH = document.getElementById('chart-hourly').getContext('2d');
+  const gH = ctxH.createLinearGradient(0, 0, 0, 240);
+  gH.addColorStop(0, 'rgba(112,112,245,0.30)');
+  gH.addColorStop(1, 'rgba(112,112,245,0)');
+  chartHourly = new Chart(ctxH, {
+    type: 'line',
+    data: { labels: [], datasets: [{
+      label: 'MB', data: [], borderColor: t.brand, backgroundColor: gH,
+      fill: true, tension: 0.35, pointRadius: 0, borderWidth: 2,
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: false }, tooltip: { padding: 10, cornerRadius: 8 } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: t.fg3, font: { size: 10 } } },
+        y: { grid: { color: t.line1 }, ticks: { color: t.fg3, font: { size: 10 }, callback: v => v + ' MB' } },
+      },
+    },
+  });
+
+  // Distribution donut
+  chartDist = new Chart(document.getElementById('chart-dist').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: ['VLESS/WS', 'XHTTP', 'HTTP Proxy'],
+      datasets: [{
+        data: [55, 35, 10],
+        backgroundColor: [t.brand, t.okFg, t.infoFg],
+        borderColor: t.bg1, borderWidth: 3, hoverOffset: 6,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '72%',
+      plugins: {
+        legend: { position: 'bottom', labels: { color: t.fg2, font: { size: 10 }, padding: 10, usePointStyle: true, pointStyle: 'circle', boxWidth: 8 } },
+      },
+    },
+  });
+
+  // Traffic trend
+  const ctxT = document.getElementById('chart-traffic').getContext('2d');
+  const gT = ctxT.createLinearGradient(0, 0, 0, 300);
+  gT.addColorStop(0, 'rgba(112,112,245,0.28)');
+  gT.addColorStop(1, 'rgba(112,112,245,0)');
+  chartTraffic = new Chart(ctxT, {
+    type: 'line',
+    data: { labels: [], datasets: [
+      { label: 'Usage', data: [], borderColor: t.brand, backgroundColor: gT, fill: true, tension: 0.35, pointRadius: 0, borderWidth: 2 },
+      { label: 'Average', data: [], borderColor: t.warnFg, borderDash: [5, 4], borderWidth: 1.4, pointRadius: 0, fill: false, tension: 0 },
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: false }, tooltip: { padding: 10, cornerRadius: 8 } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: t.fg3, font: { size: 10 } } },
+        y: { grid: { color: t.line1 }, ticks: { color: t.fg3, font: { size: 10 }, callback: v => v + ' MB' } },
+      },
+    },
+  });
+}
+
+function rebuildCharts(){
+  if (chartHourly) chartHourly.destroy();
+  if (chartDist) chartDist.destroy();
+  if (chartTraffic) chartTraffic.destroy();
+  initCharts();
+}
+
+function updateHourlyChart(hourly){
+  if (!chartHourly) return;
+  const labels = Object.keys(hourly).sort();
+  const vals = labels.map(k => +(hourly[k] / 1024**2).toFixed(2));
+  chartHourly.data.labels = labels;
+  chartHourly.data.datasets[0].data = vals;
+  chartHourly.update();
+}
+function updateTrafficChart(hourly){
+  if (!chartTraffic) return;
+  const labels = Object.keys(hourly).sort();
+  const vals = labels.map(k => +(hourly[k] / 1024**2).toFixed(2));
+  const avg = vals.length ? vals.reduce((a,b)=>a+b,0) / vals.length : 0;
+  chartTraffic.data.labels = labels;
+  chartTraffic.data.datasets[0].data = vals;
+  chartTraffic.data.datasets[1].data = labels.map(() => +avg.toFixed(2));
+  chartTraffic.update();
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Auth + refresh loop
+   ══════════════════════════════════════════════════════════════════════════ */
+async function checkAuth(){
+  try {
+    const r = await fetch('/api/me');
+    const d = await r.json();
+    if (!d.authenticated) location.href = '/login';
+  } catch (e) { location.href = '/login'; }
+}
+function logout(){
+  fetch('/api/logout', {method: 'POST'}).finally(() => location.href = '/login');
+}
+
+async function refreshAll(){
+  await refreshDefaultLink();
+  await refreshOverview();
+  const activePage = document.querySelector('.page.on');
+  if (!activePage) return;
+  const id = activePage.id.replace('page-', '');
+  if (PAGE_LOADERS[id]) await PAGE_LOADERS[id]();
+  toast('Refreshed', '', 'ok');
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
   await checkAuth();
   initCharts();
-  document.getElementById('set-host').textContent=location.host;
-  document.getElementById('sub-all-url')&&(document.getElementById('sub-all-url').textContent=location.protocol+'//'+location.host+'/sub-all');
-  fetchStats();fetchDefaultVless();loadLinks();loadSubs();
-  setInterval(fetchStats,4000);
-  setInterval(()=>{
-    if(document.getElementById('pg-links').classList.contains('on'))loadLinks();
-    if(document.getElementById('pg-subgroups').classList.contains('on'))loadSubs();
-    if(document.getElementById('pg-subscriptions').classList.contains('on'))loadSubsPage();
-    if(document.getElementById('pg-connections').classList.contains('on'))loadConns();
-    if(document.getElementById('pg-logs').classList.contains('on'))loadActivity();
-  },5000);
-});
+  document.getElementById('set-host').textContent = location.host;
+  await refreshDefaultLink();
+  await refreshOverview();
 
-document.addEventListener('keydown',e=>{
-  if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('.nav-it,.chip,.proto-card,.lrow-v2,.cfg-uuid-mini,.traf-range-tab')){e.preventDefault();e.target.click()}
+  // Light background poll
+  setInterval(async () => {
+    if (document.visibilityState !== 'visible') return;
+    const id = document.querySelector('.page.on')?.id;
+    if (id === 'page-connections') loadConnections();
+    else if (id === 'page-overview') refreshOverview();
+  }, 5000);
 });
 </script>
-</body></html>"""
+</body>
+</html>""".replace("__COMMON_CSS__", _COMMON_CSS)
 
-NOT_FOUND_HTML = r"""<!DOCTYPE html>
-<html lang="en" dir="ltr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="dark light"><title>Group not found · Lumen Gate</title>
-<style>
-:root{color-scheme:dark light}
-body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:#080f17;color:#e8eff5;text-align:center}
-@media(prefers-color-scheme:light){body{background:#f2f5f7;color:#0b1620}p{color:#4b5b6a!important}}
-h1{font-size:24px;letter-spacing:-.02em;margin:18px 0 6px}p{margin:0;color:#9db0c0;max-width:34ch}
-svg{width:48px;height:48px}
-</style></head><body><main><svg viewBox="0 0 32 32" role="img" aria-label="Lumen Gate"><defs><linearGradient id="lgN" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:#2dd4bf"/><stop offset="1" style="stop-color:#2563c9"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="url(#lgN)"/><path d="M6 17h5l3-8 4 14 3-6h5" fill="none" stroke="#04201c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-<h1>Group not found</h1><p>This link is invalid or the group has been removed. Check the address and try again.</p></main></body></html>"""
 
-def get_public_page_html(uuid_key: str) -> str:
-    """Public subscription page: hidden config links with a reveal button and a dedicated password screen."""
-    return f"""<!DOCTYPE html>
-<html lang="en" dir="ltr">
+# ══════════════════════════════════════════════════════════════════════════════
+# PUBLIC SUB PAGE
+# ══════════════════════════════════════════════════════════════════════════════
+_PUBLIC_PAGE_TEMPLATE = r"""<!DOCTYPE html>
+<html lang="en" data-theme="dark">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="dark light">
-<title>Subscription · Lumen Gate</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%232dd4bf%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%232563c9%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%229%22%20fill%3D%22url%28%23g%29%22/%3E%3Cpath%20d%3D%22M6%2017h5l3-8%204%2014%203-6h5%22%20fill%3D%22none%22%20stroke%3D%22%2304201c%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E">
-<script>try{{document.documentElement.setAttribute('data-theme',localStorage.getItem('gateway-pub-theme')==='light'?'light':'dark')}}catch(e){{}}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>__NAME__ · Gateway</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <style>
-/* Lumen Gate — public subscription page */
-:root{{
-  color-scheme:dark;
-  --bg:#080f17;--bg2:#0c1520;--bg3:#15212d;
-  --card:#0f1923;--card-b:#233443;--card-bh:#35506a;
-  --t1:#e8eff5;--t2:#9db0c0;--t3:#6b8093;
-  --accent:#2dd4bf;--accent2:#5eead4;--accent-d:rgba(45,212,191,.12);--on-accent:#04201c;
-  --green:#4ade80;--green-t:#4ade80;--green-bg:rgba(74,222,128,.12);
-  --red:#f87171;--red-t:#f87171;--red-bg:rgba(248,113,113,.12);
-  --amber:#fbbf24;--amber-bg:rgba(251,191,36,.12);--amber-t:#fbbf24;
-  --purple:#7aa7f5;--purple-bg:rgba(122,167,245,.13);--purple-t:#7aa7f5;
-  --shadow:0 12px 40px -12px rgba(0,0,0,.7);--field:rgba(0,0,0,.22);--scrim:rgba(3,8,13,.72);
-  --ring:0 0 0 3px rgba(45,212,191,.32);
-  --font:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
-  --serif:var(--font);--radius:16px;--ease:cubic-bezier(.2,.8,.2,1);
-}}
-[data-theme="light"]{{
-  color-scheme:light;
-  --bg:#f2f5f7;--bg2:#ffffff;--bg3:#e9eef2;
-  --card:#ffffff;--card-b:#dbe2e9;--card-bh:#b7c4d1;
-  --t1:#0b1620;--t2:#4b5b6a;--t3:#7a8896;
-  --accent:#0b8f84;--accent2:#097a71;--accent-d:#dcf3f0;--on-accent:#ffffff;
-  --green:#138a55;--green-t:#0f7547;--green-bg:#dcf3e6;
-  --red:#d43b3b;--red-t:#b92f2f;--red-bg:#fbe3e3;
-  --amber:#b36a00;--amber-bg:#fbefd5;--amber-t:#935700;
-  --purple:#2563c9;--purple-bg:#e0eafb;--purple-t:#2563c9;
-  --shadow:0 12px 36px -12px rgba(11,22,32,.2);--field:#f6f8fa;--scrim:rgba(11,22,32,.5);
-  --ring:0 0 0 3px rgba(11,143,132,.3);
-}}
-*{{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}}
-html,body{{min-height:100%;background:var(--bg);font-family:var(--font);color:var(--t1);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;transition:background .25s,color .25s}}
-button,input{{font:inherit;color:inherit}}
-button{{cursor:pointer}}
-:focus-visible{{outline:none;box-shadow:var(--ring)}}
-.bg-fx{{position:fixed;inset:0;background:radial-gradient(60% 40% at 50% -5%,var(--accent-d),transparent 70%);z-index:0;pointer-events:none}}
-.grid-fx{{display:none}}
-.wrap{{position:relative;z-index:10;max-width:760px;margin:0 auto;padding:calc(24px + env(safe-area-inset-top,0px)) 16px calc(64px + env(safe-area-inset-bottom,0px))}}
-.top{{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;gap:10px}}
-.brand{{display:flex;align-items:center;gap:10px;min-width:0}}
-.brand-img{{display:flex;flex-shrink:0}}.brand-img svg{{width:34px;height:34px}}
-.brand-name{{font-size:15px;font-weight:650;letter-spacing:-.01em}}
-.brand-sub{{font-size:11px;color:var(--t3)}}
-.top-actions{{display:flex;align-items:center;gap:6px;flex-shrink:0}}
-.icon-btn{{width:36px;height:36px;border-radius:var(--r-md,12px);background:var(--card);border:1px solid var(--card-b);color:var(--t2);display:flex;align-items:center;justify-content:center;font-size:17px;transition:.15s}}
-.icon-btn:hover{{background:var(--bg3);color:var(--t1)}}
+__COMMON_CSS__
 
-.sub-info{{background:var(--card);border:1px solid var(--card-b);border-radius:20px;padding:24px;margin-bottom:16px;box-shadow:var(--shadow);border-top:3px solid var(--accent)}}
-.sub-eyebrow{{font-size:12.5px;font-weight:600;color:var(--accent2);margin-bottom:8px;display:flex;align-items:center;gap:6px}}
-.sub-eyebrow i{{font-size:15px}}
-.sub-name{{font-size:26px;font-weight:700;margin-bottom:6px;letter-spacing:-.03em;line-height:1.15}}
-.sub-desc{{font-size:14px;color:var(--t2);line-height:1.7;margin-bottom:14px}}
-.sub-meta-row{{font-size:12px;color:var(--t3);margin-bottom:14px;display:flex;align-items:center;gap:6px}}
-.sub-sub-box{{background:var(--bg2);border:1px solid var(--card-b);border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}}
-.sub-sub-url{{font-family:var(--mono);font-size:12px;color:var(--t2);word-break:break-all;flex:1;min-width:140px}}
+body{
+  background:
+    radial-gradient(ellipse 600px 300px at 50% -8%, var(--brand-lo), transparent 62%),
+    var(--bg-0);
+  min-height: 100vh;
+}
+.wrap{max-width:720px;margin:0 auto;padding:var(--sp-6) var(--sp-4) var(--sp-12)}
 
-.stats-bar{{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}}
-.stat-card{{background:var(--card);border:1px solid var(--card-b);border-radius:var(--radius);padding:16px;transition:border-color .2s}}
-.stat-card:hover{{border-color:var(--card-bh)}}
-.stat-label{{font-size:12.5px;color:var(--t2);margin-bottom:8px;font-weight:550}}
-.stat-val{{font-size:24px;font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}}
-.stat-sub{{font-size:12px;color:var(--t3);margin-top:8px}}
+.top{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:var(--sp-3);margin-bottom:var(--sp-6);
+}
+.brand{display:flex;align-items:center;gap:var(--sp-2);min-width:0}
+.brand-mark{
+  width:32px;height:32px;border-radius:var(--r-md);
+  background:linear-gradient(135deg,var(--brand),var(--c-coral-500));
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font-family:var(--font-mono);font-weight:700;font-size:14px;
+  flex-shrink:0;
+}
+.brand-txt{font-weight:600;font-size:var(--fs-13);letter-spacing:-.01em}
+.brand-ver{font-family:var(--font-mono);font-size:10px;color:var(--fg-2);margin-top:1px}
+.top-actions{display:flex;gap:6px}
 
-.copy-all-bar{{display:flex;align-items:center;gap:12px;background:var(--accent);color:var(--on-accent);border-radius:var(--radius);padding:16px 18px;margin-bottom:20px;flex-wrap:wrap}}
-.copy-all-text{{flex:1;min-width:160px}}
-.copy-all-title{{font-size:15px;font-weight:650;display:flex;align-items:center;gap:8px}}
-.copy-all-sub{{font-size:12.5px;opacity:.8;margin-top:2px}}
-.copy-all-btn{{background:var(--on-accent);color:var(--accent);border:0;border-radius:12px;height:38px;padding:0 18px;font-size:13.5px;font-weight:650;display:flex;align-items:center;gap:6px;transition:transform .12s,filter .15s}}
-[data-theme="light"] .copy-all-btn{{background:#fff;color:var(--accent2)}}
-.copy-all-btn:hover{{filter:brightness(1.1)}}.copy-all-btn:active{{transform:scale(.97)}}
+/* Hero */
+.hero{
+  background:var(--bg-1);border:1px solid var(--line-1);
+  border-radius:var(--r-xl);padding:var(--sp-6);
+  margin-bottom:var(--sp-4);position:relative;overflow:hidden;
+}
+.hero::before{
+  content:'';position:absolute;top:-60px;right:-60px;
+  width:200px;height:200px;
+  background:radial-gradient(circle,var(--brand-lo),transparent 70%);
+  pointer-events:none;
+}
+.hero-eyebrow{
+  font-family:var(--font-mono);font-size:var(--fs-11);
+  color:var(--brand);letter-spacing:.06em;margin-bottom:var(--sp-2);
+  display:flex;align-items:center;gap:6px;
+}
+.hero-title{font-size:var(--fs-24);font-weight:700;letter-spacing:-.02em;margin-bottom:6px}
+.hero-desc{font-size:var(--fs-13);color:var(--fg-2);line-height:1.6;margin-bottom:var(--sp-3)}
+.hero-meta{
+  font-family:var(--font-mono);font-size:var(--fs-11);color:var(--fg-3);
+  display:flex;align-items:center;gap:6px;margin-bottom:var(--sp-3);
+}
 
-.cfg-title{{font-size:15px;font-weight:650;margin-bottom:12px;display:flex;align-items:center;gap:8px}}
-.cfg-title i{{color:var(--accent);font-size:18px}}
-.cfg-grid{{display:grid;gap:14px}}
-/* Config card: a "pass" with a perforated tear line between usage and link */
-.cfg-card{{background:var(--card);border:1px solid var(--card-b);border-radius:var(--radius);transition:border-color .2s,box-shadow .2s;position:relative;overflow:hidden}}
-.cfg-card:hover{{border-color:var(--card-bh);box-shadow:var(--shadow)}}
-.cfg-top{{padding:18px 20px 16px;position:relative}}
-.cfg-top::after{{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:var(--green)}}
-.cfg-card.inactive .cfg-top::after{{background:var(--red)}}
-.cfg-head{{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap}}
-.cfg-label{{font-size:16px;font-weight:650;letter-spacing:-.01em}}
-.cfg-badges{{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}}
-.proto-chip{{font-size:11px;padding:2px 9px;border-radius:7px;font-weight:600;display:inline-flex;align-items:center;gap:4px}}
-.pc-ws{{background:var(--accent-d);color:var(--accent2)}}
-.pc-xhttp{{background:var(--purple-bg);color:var(--purple-t)}}
-.pc-ultra{{background:var(--green-bg);color:var(--green-t)}}
-.cfg-status{{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:99px;white-space:nowrap}}
-.cfg-status.ok{{background:var(--green-bg);color:var(--green-t)}}
-.cfg-status.no{{background:var(--red-bg);color:var(--red-t)}}
-.cfg-usage{{margin-bottom:4px}}
-.ubar{{height:6px;border-radius:99px;background:var(--bg3);overflow:hidden;margin-bottom:6px}}
-.ubar-f{{height:100%;border-radius:99px;transition:width .6s var(--ease)}}
-.utxt{{font-size:12px;color:var(--t3);display:flex;justify-content:space-between}}
-.cfg-tear{{position:relative;height:0;border-top:1.5px dashed var(--card-b);margin:0 20px}}
-.cfg-tear::before,.cfg-tear::after{{content:'';position:absolute;top:50%;width:18px;height:18px;border-radius:50%;background:var(--bg);transform:translateY(-50%);border:1px solid var(--card-b)}}
-.cfg-tear::before{{left:-30px}}.cfg-tear::after{{right:-30px}}
-.cfg-bottom{{padding:14px 20px 18px}}
-.cfg-link-toggle{{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;background:transparent;border:1px solid var(--card-b);border-radius:12px;padding:10px 14px;color:var(--t2);font-size:13px;font-weight:550;transition:.15s}}
-.cfg-link-toggle:hover{{background:var(--bg3);color:var(--t1)}}
-.cfg-link-toggle .ltl{{display:flex;align-items:center;gap:8px}}
-.cfg-link-toggle i.ti-chevron-down{{transition:transform .2s}}
-.cfg-link-toggle.open i.ti-chevron-down{{transform:rotate(180deg)}}
-.cfg-vless-wrap{{display:grid;grid-template-rows:0fr;transition:grid-template-rows .25s var(--ease)}}
-.cfg-vless-wrap.open{{grid-template-rows:1fr}}
-.cfg-vless-inner{{overflow:hidden}}
-.cfg-vless{{margin-top:10px;background:var(--field);border:1px solid var(--card-b);border-radius:12px;padding:12px 14px;font-size:11.5px;font-family:var(--mono);color:var(--accent2);word-break:break-all;line-height:1.7}}
-.cfg-actions{{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}}
-.btn{{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 14px;border-radius:12px;border:1px solid transparent;font-size:13px;font-weight:600;white-space:nowrap;transition:background .15s,filter .15s,transform .12s}}
-.btn i{{font-size:15px}}.btn:active{{transform:scale(.97)}}.btn:disabled{{opacity:.5;cursor:not-allowed}}
-.btn-p{{background:var(--accent);color:var(--on-accent)}}.btn-p:hover{{filter:brightness(1.1)}}
-.btn-g{{background:var(--accent-d);color:var(--accent2)}}.btn-g:hover{{filter:brightness(1.15)}}
-.btn-pur{{background:var(--purple-bg);color:var(--purple-t)}}.btn-pur:hover{{filter:brightness(1.15)}}
-.conn-chip{{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:2px 10px;border-radius:99px;background:var(--green-bg);color:var(--green-t);font-weight:600}}
-.dot{{width:7px;height:7px;border-radius:50%;background:var(--green);color:var(--green);display:inline-block;animation:ring 2s infinite}}
-@keyframes ring{{0%{{box-shadow:0 0 0 0 currentColor}}70%,100%{{box-shadow:0 0 0 6px transparent}}}}
+.sub-pill{
+  display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;
+  background:var(--bg-2);border:1px solid var(--line-1);
+  border-radius:var(--r-md);padding:6px 6px 6px 12px;
+}
+.sub-pill .url{
+  flex:1;min-width:120px;
+  font-family:var(--font-mono);font-size:var(--fs-11);color:var(--fg-2);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
 
-/* Locked (password-protected) state */
-.lock-stage{{display:flex;align-items:center;justify-content:center;min-height:76vh;padding:20px 0}}
-.lock-card{{background:var(--card);border:1px solid var(--card-b);border-radius:24px;text-align:center;max-width:380px;width:100%;box-shadow:var(--shadow);overflow:hidden}}
-.lock-banner{{padding:36px 28px 22px;border-bottom:1px solid var(--card-b)}}
-.lock-shield{{width:60px;height:60px;border-radius:18px;background:var(--accent-d);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;position:relative}}
-.lock-shield::after{{content:'';position:absolute;inset:-7px;border-radius:24px;border:1px solid var(--accent);opacity:.35;animation:breathe 2.6s ease-in-out infinite}}
-@keyframes breathe{{0%,100%{{transform:scale(1);opacity:.4}}50%{{transform:scale(1.08);opacity:0}}}}
-.lock-shield i{{font-size:28px;color:var(--accent)}}
-.lock-title{{font-size:20px;font-weight:700;margin-bottom:6px;letter-spacing:-.02em}}
-.lock-sub{{font-size:13.5px;color:var(--t2);line-height:1.6}}
-.lock-form{{padding:22px 28px 28px}}
-.lock-field{{position:relative;margin-bottom:12px}}
-.lock-inp{{width:100%;height:46px;padding:0 44px;border-radius:12px;border:1px solid var(--card-b);background:var(--field);color:var(--t1);font-size:15px;outline:none;text-align:center;transition:border-color .15s,box-shadow .15s}}
-.lock-inp:focus{{border-color:var(--accent);box-shadow:var(--ring)}}
-.lock-eye{{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:32px;height:32px;background:none;border:0;border-radius:8px;color:var(--t3);font-size:17px;display:flex;align-items:center;justify-content:center}}
-.lock-eye:hover{{color:var(--t1);background:var(--bg3)}}
-.lock-lockicon{{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--t3);font-size:16px;pointer-events:none}}
-.lock-err{{color:var(--red-t);font-size:13px;margin-bottom:10px;min-height:18px;display:flex;align-items:center;justify-content:center;gap:6px}}
-.lock-btn{{width:100%;height:44px;font-size:14px;border-radius:12px}}
-.lock-footer{{padding:14px 28px;border-top:1px solid var(--card-b);font-size:12px;color:var(--t3);display:flex;align-items:center;justify-content:center;gap:6px}}
-.empty-state{{text-align:center;padding:80px 20px;color:var(--t3)}}
-.empty-state i{{font-size:38px;display:block;margin-bottom:14px}}
+/* Stats */
+.stat-strip{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:var(--sp-2);margin-bottom:var(--sp-4);
+}
 
-.toast{{position:fixed;bottom:calc(22px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%) translateY(40px);background:var(--card);border:1px solid var(--card-b);border-left:3px solid var(--accent);color:var(--t1);border-radius:12px;padding:11px 18px;font-size:13.5px;opacity:0;transition:opacity .25s,transform .25s var(--ease);z-index:900;box-shadow:var(--shadow);pointer-events:none;max-width:calc(100vw - 32px)}}
-.toast.show{{opacity:1;transform:translateX(-50%) translateY(0)}}
-.toast.ok{{border-left-color:var(--green)}}
-.qr-modal{{display:none;position:fixed;inset:0;background:var(--scrim);z-index:600;align-items:center;justify-content:center;backdrop-filter:blur(6px);padding:20px}}
-.qr-modal.open{{display:flex}}
-.qr-box{{background:var(--card);border:1px solid var(--card-b);border-radius:20px;padding:24px;text-align:center;max-width:340px;width:100%;box-shadow:var(--shadow)}}
-.qr-title{{font-size:15px;font-weight:650;margin-bottom:16px}}
-.qr-img{{border-radius:14px;overflow:hidden;margin-bottom:16px}}
-.qr-img img{{width:100%;display:block;background:#fff;padding:10px;border-radius:14px}}
-.footer{{text-align:center;padding-top:32px;font-size:12px;color:var(--t3)}}
-.footer a{{color:var(--accent2);font-weight:600}}
-@media(prefers-reduced-motion:reduce){{*,*::before,*::after{{animation:none!important;transition:none!important}}}}
-@media(max-width:520px){{
-  .stats-bar{{grid-template-columns:1fr 1fr}}
-  .stats-bar .stat-card:nth-child(3){{grid-column:1/-1}}
-  .sub-name{{font-size:21px}}
-  .copy-all-bar{{flex-direction:column;align-items:stretch}}
-  .copy-all-btn{{justify-content:center}}
-  .wrap{{padding-left:12px;padding-right:12px}}
-  .lock-banner{{padding:30px 20px 20px}}.lock-form{{padding:20px 20px 24px}}
-}}
-@keyframes spin{{to{{transform:rotate(360deg)}}}}
+/* Config list */
+.cfg-title{
+  display:flex;align-items:center;gap:6px;
+  font-size:var(--fs-12);font-weight:600;color:var(--fg-2);
+  text-transform:uppercase;letter-spacing:.06em;
+  margin-bottom:var(--sp-3);
+}
+.cfg-title i{color:var(--brand)}
+.cfg-grid{display:grid;gap:var(--sp-3)}
+
+.cfg-link-toggle{
+  width:100%;display:flex;align-items:center;justify-content:space-between;
+  gap:var(--sp-2);padding:8px 12px;
+  background:transparent;border:1px dashed var(--line-2);
+  border-radius:var(--r-sm);color:var(--fg-2);font-size:var(--fs-12);font-weight:500;
+  cursor:pointer;transition:all var(--dur-1) var(--ease);
+}
+.cfg-link-toggle:hover{background:var(--brand-lo);border-color:var(--brand-line);color:var(--brand)}
+.cfg-link-wrap{display:grid;grid-template-rows:0fr;transition:grid-template-rows var(--dur-2) var(--ease)}
+.cfg-link-wrap.open{grid-template-rows:1fr}
+.cfg-link-inner{overflow:hidden}
+.cfg-link{
+  font-family:var(--font-mono);font-size:10px;
+  background:var(--bg-0);border:1px solid var(--line-1);
+  border-radius:var(--r-sm);padding:10px 12px;
+  color:var(--fg-1);word-break:break-all;line-height:1.7;
+  margin-top:8px;max-height:100px;overflow-y:auto;
+}
+
+.empty-hero{
+  text-align:center;padding:var(--sp-10) var(--sp-4);
+  background:var(--bg-1);border:1px dashed var(--line-2);border-radius:var(--r-xl);
+}
+.empty-hero .ic{
+  width:52px;height:52px;margin:0 auto var(--sp-3);
+  background:var(--bg-3);border-radius:var(--r-lg);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--fg-2);font-size:24px;
+}
+
+/* Lock screen */
+.lock-wrap{
+  min-height:calc(100vh - 120px);
+  display:flex;align-items:center;justify-content:center;
+}
+.lock-card{
+  width:100%;max-width:380px;
+  background:var(--bg-1);border:1px solid var(--line-2);
+  border-radius:var(--r-xl);padding:var(--sp-8) var(--sp-6);
+  text-align:center;box-shadow:var(--shadow-3);
+}
+.lock-icon-wrap{
+  width:52px;height:52px;margin:0 auto var(--sp-4);
+  background:var(--brand-lo);border-radius:var(--r-lg);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--brand);font-size:22px;position:relative;
+}
+.lock-icon-wrap::after{
+  content:'';position:absolute;inset:-6px;
+  border-radius:var(--r-xl);border:1px solid var(--brand-line);
+  animation:lockPulse 2.4s ease-in-out infinite;
+}
+@keyframes lockPulse{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:0;transform:scale(1.1)}}
+.lock-title{font-size:var(--fs-17);font-weight:600;margin-bottom:6px}
+.lock-sub{font-size:var(--fs-12);color:var(--fg-2);margin-bottom:var(--sp-5);line-height:1.6}
+.lock-form{display:flex;flex-direction:column;gap:var(--sp-3);text-align:left}
+.lock-form .btn{height:42px;font-size:var(--fs-14);border-radius:var(--r-lg);justify-content:center}
+.lock-foot{
+  margin-top:var(--sp-5);padding-top:var(--sp-4);
+  border-top:1px solid var(--line-1);
+  font-family:var(--font-mono);font-size:10px;color:var(--fg-3);
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+
+/* QR modal */
+.qr-canvas{width:220px;height:220px;background:#fff;border-radius:var(--r-md);padding:10px;box-shadow:var(--shadow-2)}
+.qr-canvas img{width:100%;height:100%;display:block}
+
+/* Footer */
+.foot{
+  text-align:center;padding-top:var(--sp-8);
+  font-family:var(--font-mono);font-size:10px;color:var(--fg-3);
+}
+
+@media(max-width:520px){
+  .wrap{padding:var(--sp-4) var(--sp-3) var(--sp-10)}
+  .hero{padding:var(--sp-5)}
+  .hero-title{font-size:var(--fs-20)}
+  .stat-strip{grid-template-columns:1fr 1fr}
+  .stat-strip > :nth-child(3){grid-column:1/-1}
+  .lock-card{padding:var(--sp-6) var(--sp-5)}
+}
 </style>
 </head>
 <body>
-<div class="bg-fx"></div>
-<div class="toast" id="toast" role="status" aria-live="polite"></div>
-<div class="qr-modal" id="qr-modal" onclick="this.classList.remove('open')">
-  <div class="qr-box" onclick="event.stopPropagation()">
-    <div class="qr-title" id="qr-label">QR Code</div>
-    <div class="qr-img"><img id="qr-img" src="" alt="QR"></div>
-    <button class="btn btn-g" style="width:100%;justify-content:center" onclick="document.getElementById('qr-modal').classList.remove('open')"><i class="ti ti-x"></i> Close</button>
-  </div>
-</div>
-<main class="wrap">
+
+<div class="wrap">
   <div class="top">
     <div class="brand">
-      <div class="brand-img"><svg viewBox="0 0 32 32" role="img" aria-label="Lumen Gate"><defs><linearGradient id="lgP" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--accent)"/><stop offset="1" style="stop-color:var(--purple)"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="url(#lgP)"/><path d="M6 17h5l3-8 4 14 3-6h5" fill="none" stroke="var(--on-accent)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-      <div><div class="brand-name">Lumen Gate</div><div class="brand-sub">v11</div></div>
+      <div class="brand-mark">G</div>
+      <div>
+        <div class="brand-txt">Gateway</div>
+        <div class="brand-ver">v12</div>
+      </div>
     </div>
     <div class="top-actions">
-      <button class="icon-btn" id="theme-toggle" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme"><i class="ti ti-sun" id="theme-icon"></i></button>
-      
+      <button class="btn btn-secondary btn-icon btn-sm" onclick="toggleTheme()" aria-label="Toggle theme"><i class="ti ti-sun" id="theme-icon"></i></button>
     </div>
   </div>
+
   <div id="root">
-    <div class="empty-state"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i>Loading...</div>
+    <div class="empty-hero"><div class="ic"><i class="ti ti-loader-2" style="animation:spin .8s linear infinite"></i></div><div class="text-sm text-muted">Loading…</div></div>
   </div>
-  <footer class="footer">Lumen Gate v11</footer>
+
+  <div class="foot">Powered by Gateway v12</div>
 </div>
+
+<div class="modal-backdrop" id="modal-qr">
+  <div class="modal" style="max-width:340px">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="qr-title">Scan QR</div>
+        <div class="modal-sub">Point your client at it.</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-qr')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body" style="align-items:center">
+      <div class="qr-canvas"><img id="qr-img" src="" alt="QR"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-primary" onclick="copyQRLink()"><i class="ti ti-copy"></i> Copy link</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-host" id="toast-host"></div>
+
 <script>
-const UUID_KEY='{uuid_key}';
-let savedPw='';
+const UUID_KEY = '__UUID_KEY__';
+let savedPw = '';
+let currentData = null;
 
-let isDark=localStorage.getItem('gateway-pub-theme')!=='light';
-function applyTheme(dark){{
-  document.documentElement.setAttribute('data-theme',dark?'dark':'light');
-  document.getElementById('theme-icon').className='ti '+(dark?'ti-sun':'ti-moon');
-}}
-function toggleTheme(){{isDark=!isDark;localStorage.setItem('gateway-pub-theme',isDark?'dark':'light');applyTheme(isDark)}}
-applyTheme(isDark);
+/* Theme */
+(function(){
+  const saved = localStorage.getItem('gateway-pub-theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  renderThemeIcon(saved);
+})();
+function renderThemeIcon(theme){
+  const icon = document.getElementById('theme-icon');
+  if (!icon) return;
+  icon.className = 'ti ' + (theme === 'dark' ? 'ti-sun' : 'ti-moon');
+}
+function toggleTheme(){
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('gateway-pub-theme', next);
+  renderThemeIcon(next);
+}
 
-function toast(msg,type=''){{
-  const t=document.getElementById('toast');
-  t.textContent=msg;t.className='toast show'+(type?' '+type:'');
-  setTimeout(()=>t.classList.remove('show'),2400);
-}}
-function esc(s){{return String(s||'').replace(/[&<>"']/g,c=>({{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}}[c]))}}
-function fmtB(b){{if(!b||b===0)return '0 B';if(b<1024)return b+' B';if(b<1024**2)return (b/1024).toFixed(1)+' KB';if(b<1024**3)return (b/1024**2).toFixed(2)+' MB';return (b/1024**3).toFixed(2)+' GB'}}
-function toFa(n){{return String(n)}}
-function protoChip(p){{
-  if(p==='xhttp-stream-one')return '<span class="proto-chip pc-ultra"><i class="ti ti-bolt"></i> XHTTP ULTRA</span>';
-  if(p&&p.startsWith('xhttp'))return '<span class="proto-chip pc-xhttp">'+esc(p)+'</span>';
-  return '<span class="proto-chip pc-ws">VLESS · WS</span>';
-}}
+/* Utils */
+function esc(s){return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function fmtB(b){
+  if (!b || b === 0) return '0 B';
+  if (b < 1024) return b + ' B';
+  if (b < 1024**2) return (b/1024).toFixed(1) + ' KB';
+  if (b < 1024**3) return (b/1024**2).toFixed(2) + ' MB';
+  return (b/1024**3).toFixed(2) + ' GB';
+}
+function daysLeft(exp){ if (!exp) return null; return Math.ceil((new Date(exp) - Date.now()) / 864e5); }
+function toast(title, msg = '', level = 'info'){
+  const host = document.getElementById('toast-host');
+  const icons = { ok: 'ti-check', err: 'ti-x', warn: 'ti-alert-triangle', info: 'ti-info-circle' };
+  const el = document.createElement('div');
+  el.className = 'toast ' + level;
+  el.innerHTML = `<div class="ic"><i class="ti ${icons[level] || icons.info}"></i></div><div class="body"><div class="ttl">${esc(title)}</div>${msg ? `<div class="msg">${esc(msg)}</div>` : ''}</div>`;
+  host.appendChild(el);
+  setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 250); }, 2600);
+}
+function copyRaw(txt){ navigator.clipboard.writeText(txt).then(() => toast('Copied', '', 'ok')); }
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-backdrop').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.querySelectorAll('.modal-backdrop.open').forEach(m => m.classList.remove('open'));
+});
 
-function showQR(label,link){{
-  document.getElementById('qr-label').textContent=label;
-  document.getElementById('qr-img').src='https://api.qrserver.com/v1/create-qr-code/?size=260x260&data='+encodeURIComponent(link);
-  document.getElementById('qr-modal').classList.add('open');
-}}
+/* QR */
+let qrText = '';
+function showQR(label, text){
+  qrText = text;
+  document.getElementById('qr-title').textContent = label;
+  document.getElementById('qr-img').src = 'https://api.qrserver.com/v1/create-qr-code/?size=440x440&data=' + encodeURIComponent(text);
+  openModal('modal-qr');
+}
+function copyQRLink(){ if (qrText) copyRaw(qrText); }
 
-function toggleLink(i){{
-  const wrap=document.getElementById('vw-'+i);
-  const btn=document.getElementById('vt-'+i);
-  const open=wrap.classList.toggle('open');
-  btn.classList.toggle('open',open);
-  btn.querySelector('.ltl span').textContent = open ? 'Hide link' : 'Show config link';
-}}
-
-async function loadData(pw=''){{
-  const url='/api/public/sub/'+UUID_KEY+(pw?'?pw='+encodeURIComponent(pw):'');
-  const r=await fetch(url);
+/* Fetch data */
+async function fetchData(pw = ''){
+  const url = '/api/public/sub/' + UUID_KEY + (pw ? '?pw=' + encodeURIComponent(pw) : '');
+  const r = await fetch(url);
   return r.json();
-}}
+}
 
-function renderLock(name,errMsg=''){{
-  document.getElementById('root').innerHTML=`
-    <div class="lock-stage">
+/* Render lock */
+function renderLock(name, errorMsg = ''){
+  document.getElementById('root').innerHTML = `
+    <div class="lock-wrap">
       <div class="lock-card">
-        <div class="lock-banner">
-          <div class="lock-shield"><i class="ti ti-shield-lock"></i></div>
-          <div class="lock-title">${{esc(name)}}</div>
-          <div class="lock-sub">This group is password protected. Enter the password to view its configs.</div>
-        </div>
+        <div class="lock-icon-wrap"><i class="ti ti-lock"></i></div>
+        <div class="lock-title">${esc(name)}</div>
+        <div class="lock-sub">This sub-group is password-protected. Enter the password shared with you to continue.</div>
         <div class="lock-form">
-          <div class="lock-err" id="lock-err">${{errMsg ? '<i class="ti ti-alert-circle"></i> '+esc(errMsg) : ''}}</div>
-          <div class="lock-field">
-            <i class="ti ti-lock lock-lockicon"></i>
-            <input class="lock-inp" type="password" id="lock-pw" placeholder="••••••••" autofocus>
-            <button class="lock-eye" type="button" onclick="togglePwVis()"><i class="ti ti-eye" id="lock-eye-icon"></i></button>
+          ${errorMsg ? `<div class="field-error" style="justify-content:center;margin-bottom:8px"><i class="ti ti-alert-circle"></i> ${esc(errorMsg)}</div>` : ''}
+          <div class="input-wrap">
+            <input class="input" type="password" id="lock-pw" placeholder="••••••••" autofocus>
+            <button class="trail" type="button" onclick="togglePw('lock-pw', this)" aria-label="Show"><i class="ti ti-eye"></i></button>
           </div>
-          <button class="btn btn-p lock-btn" onclick="submitLock()"><i class="ti ti-lock-open"></i> Unlock group</button>
+          <button class="btn btn-primary" onclick="submitLock()"><i class="ti ti-lock-open"></i> Unlock</button>
         </div>
-        <div class="lock-footer"><i class="ti ti-shield-check"></i> Your connection is encrypted</div>
+        <div class="lock-foot"><i class="ti ti-shield-check"></i> Secured by Gateway v12</div>
       </div>
     </div>
   `;
-  const inp=document.getElementById('lock-pw');
-  inp.addEventListener('keydown',e=>{{if(e.key==='Enter')submitLock()}});
-}}
+  const input = document.getElementById('lock-pw');
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') submitLock(); });
+}
 
-function togglePwVis(){{
-  const inp=document.getElementById('lock-pw');
-  const icon=document.getElementById('lock-eye-icon');
-  const toText = inp.type==='password';
-  inp.type = toText ? 'text' : 'password';
-  icon.className = 'ti '+(toText ? 'ti-eye-off' : 'ti-eye');
-}}
+function togglePw(id, btn){
+  const el = document.getElementById(id);
+  const show = el.type === 'password';
+  el.type = show ? 'text' : 'password';
+  btn.querySelector('i').className = show ? 'ti ti-eye-off' : 'ti ti-eye';
+}
 
-async function submitLock(){{
-  const pw=document.getElementById('lock-pw').value;
-  const data=await loadData(pw);
-  if(data.locked){{renderLock(data.name,'Incorrect password');return}}
-  savedPw=pw;
+async function submitLock(){
+  const pw = document.getElementById('lock-pw').value;
+  const data = await fetchData(pw);
+  if (data.locked){ renderLock(data.name, 'Incorrect password'); return; }
+  savedPw = pw;
+  currentData = data;
   renderContent(data);
-}}
+}
 
-function renderContent(d){{
-  const activeCount=d.links.filter(l=>l.active).length;
-  const baseSubUrl = d.sub_url || (window.location.protocol + '//' + window.location.host + '/sub-group/' + UUID_KEY);
-  const subUrl = baseSubUrl + (savedPw ? '?pw=' + encodeURIComponent(savedPw) : '');
+/* Render content */
+function renderContent(d){
+  currentData = d;
+  const activeCount = d.links.filter(l => l.active).length;
+  const baseUrl = d.sub_url || (location.origin + '/sub-group/' + UUID_KEY);
+  const subUrl = baseUrl + (savedPw ? '?pw=' + encodeURIComponent(savedPw) : '');
 
-  window._subUrl  = subUrl;
-  window._subName = d.name;
-  window._links   = d.links.map(l => ({{
-    vless : l.vless_link,
-    sub   : l.sub_url + (savedPw ? '?pw=' + encodeURIComponent(savedPw) : ''),
-    label : l.label,
-  }}));
+  window._links = d.links.map(l => ({
+    vless: l.vless_link,
+    sub: l.sub_url + (savedPw ? '?pw=' + encodeURIComponent(savedPw) : ''),
+    label: l.label,
+  }));
 
-  document.getElementById('root').innerHTML=`
-    <div class="sub-info">
-      <div class="sub-eyebrow"><i class="ti ti-folders"></i> Access group</div>
-      <div class="sub-name">${{esc(d.name)}}</div>
-      ${{d.desc ? `<div class="sub-desc">${{esc(d.desc)}}</div>` : ''}}
-      <div class="sub-meta-row"><i class="ti ti-clock"></i> Last updated: ${{new Date().toLocaleTimeString('en-US')}}</div>
-      <div class="sub-sub-box">
-        <span class="sub-sub-url">${{esc(subUrl)}}</span>
-        <button class="btn btn-pur" style="padding:7px 12px;font-size:10.5px"
-          onclick="navigator.clipboard.writeText(window._subUrl).then(()=>toast('Sub link copied ✓','ok'))">
-          <i class="ti ti-copy"></i> Copy sub link
-        </button>
-        <button class="btn btn-g" style="padding:7px 12px;font-size:10.5px"
-          onclick="showQR(window._subName + ' — Entire group', window._subUrl)">
-          <i class="ti ti-qrcode"></i> Group QR
-        </button>
+  document.getElementById('root').innerHTML = `
+    <div class="hero">
+      <div class="hero-eyebrow"><i class="ti ti-folders"></i> Shared access group</div>
+      <div class="hero-title">${esc(d.name)}</div>
+      ${d.desc ? `<div class="hero-desc">${esc(d.desc)}</div>` : ''}
+      <div class="hero-meta"><i class="ti ti-clock"></i> Updated ${new Date().toLocaleTimeString()}</div>
+      <div class="sub-pill">
+        <span class="url">${esc(subUrl)}</span>
+        <button class="btn btn-secondary btn-sm" onclick="copyRaw('${esc(subUrl)}')"><i class="ti ti-copy"></i> Copy</button>
+        <button class="btn btn-secondary btn-sm" onclick="showQR('Group subscription', '${esc(subUrl)}')"><i class="ti ti-qrcode"></i> QR</button>
       </div>
     </div>
 
-    <div class="copy-all-bar">
-      <div class="copy-all-text">
-        <div class="copy-all-title"><i class="ti ti-copy"></i> Copy all configs</div>
-        <div class="copy-all-sub">Copy every active link in this group at once</div>
+    <div class="stat-strip">
+      <div class="metric-card">
+        <div class="label"><i class="ti ti-key"></i> Active configs</div>
+        <div class="value">${activeCount}</div>
+        <div class="meta">of ${d.links.length}</div>
       </div>
-      <button class="copy-all-btn" onclick="copyAllConfigs()"><i class="ti ti-clipboard-copy"></i> Copy all (${{toFa(activeCount)}})</button>
-    </div>
-
-    <div class="stats-bar">
-      <div class="stat-card">
-        <div class="stat-label">Active configs</div>
-        <div class="stat-val">${{toFa(activeCount)}}</div>
-        <div class="stat-sub">of ${{toFa(d.links.length)}} configs</div>
+      <div class="metric-card rail-ok">
+        <div class="label"><i class="ti ti-plug-connected"></i> Connections</div>
+        <div class="value">${d.active_connections}</div>
+        <div class="meta"><span class="dot ok live"></span> live</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">Live connections</div>
-        <div class="stat-val">${{toFa(d.active_connections)}}</div>
-        <div class="stat-sub" style="color:var(--green-t);display:flex;align-items:center;gap:4px"><span class="dot"></span> Online</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Total usage</div>
-        <div class="stat-val" style="font-size:17px;margin-top:3px">${{esc(d.total_used_fmt)}}</div>
-        <div class="stat-sub">All configs</div>
+      <div class="metric-card">
+        <div class="label"><i class="ti ti-arrows-exchange"></i> Total used</div>
+        <div class="value">${esc(d.total_used_fmt)}</div>
       </div>
     </div>
 
-    <div class="cfg-title"><i class="ti ti-link"></i> Configs (${{toFa(d.links.length)}} items)</div>
+    <div class="cfg-title"><i class="ti ti-link"></i> Configs (${d.links.length})</div>
     <div class="cfg-grid">
-      ${{d.links.map((l, i) => {{
-        const pct = l.limit_bytes === 0 ? 0 : Math.min(100, l.used_bytes / l.limit_bytes * 100);
-        const bc  = pct > 90 ? 'var(--red)' : pct > 70 ? 'var(--amber)' : 'var(--green)';
-        const lim = l.limit_bytes === 0 ? '∞' : fmtB(l.limit_bytes);
-        return `
-          <div class="cfg-card${{l.active ? '' : ' inactive'}}">
-            <div class="cfg-top">
-              <div class="cfg-head">
-                <div>
-                  <div class="cfg-label">${{esc(l.label)}}</div>
-                  <div class="cfg-badges">
-                    ${{protoChip(l.protocol)}}
-                    ${{l.connections > 0 ? `<span class="conn-chip"><span class="dot"></span> ${{toFa(l.connections)}} connections</span>` : ''}}
-                  </div>
-                </div>
-                <span class="cfg-status ${{l.active ? 'ok' : 'no'}}">${{l.active ? '<i class="ti ti-circle-check"></i> Active' : '<i class="ti ti-circle-x"></i> Disabled'}}</span>
-              </div>
-              <div class="cfg-usage">
-                <div class="ubar"><div class="ubar-f" style="width:${{pct}}%;background:${{bc}}"></div></div>
-                <div class="utxt"><span>${{esc(l.used_fmt)}} used</span><span>Quota: ${{lim}}</span></div>
-              </div>
-            </div>
-            <div class="cfg-tear"></div>
-            <div class="cfg-bottom">
-              <button class="cfg-link-toggle" id="vt-${{i}}" onclick="toggleLink(${{i}})">
-                <span class="ltl"><i class="ti ti-eye"></i> <span>Show config link</span></span>
-                <i class="ti ti-chevron-down"></i>
-              </button>
-              <div class="cfg-vless-wrap" id="vw-${{i}}">
-                <div class="cfg-vless-inner">
-                  <div class="cfg-vless">${{esc(l.vless_link)}}</div>
-                </div>
-              </div>
-              <div class="cfg-actions">
-                <button class="btn btn-p"
-                  onclick="navigator.clipboard.writeText(window._links[${{i}}].vless).then(()=>toast('Link copied ✓','ok'))">
-                  <i class="ti ti-copy"></i> Copy link
-                </button>
-                <button class="btn btn-g"
-                  onclick="showQR(window._links[${{i}}].label, window._links[${{i}}].vless)">
-                  <i class="ti ti-qrcode"></i> QR
-                </button>
-              </div>
-            </div>
-          </div>
-        `;
-      }}).join('')}}
+      ${d.links.map((l, i) => renderPublicConfig(l, i)).join('')}
     </div>
   `;
-  setTimeout(() => autoRefresh(), 30000);
-}}
+  scheduleRefresh();
+}
 
-function copyAllConfigs(){{
-  const links=window._links||[];
-  if(!links.length){{toast('No configs to copy','');return}}
-  const text=links.map(l=>l.vless).join('\\n');
-  navigator.clipboard.writeText(text).then(()=>toast('All '+toFa(links.length)+' configs copied ✓','ok'));
-}}
+function renderPublicConfig(l, i){
+  const pct = l.limit_bytes === 0 ? 0 : Math.min(100, (l.used_bytes / l.limit_bytes) * 100);
+  const fillClass = pct > 90 ? 'err' : pct > 70 ? 'warn' : '';
+  const statusPill = l.active
+    ? '<span class="status-pill online"><span class="dot ok live"></span> Active</span>'
+    : '<span class="status-pill offline"><span class="dot err"></span> Inactive</span>';
+  const protoBadge = l.protocol === 'vless-ws' ? '<span class="badge brand">VLESS · WS</span>'
+    : l.protocol === 'xhttp-packet-up' ? '<span class="badge info">XHTTP · packet-up</span>'
+    : '<span class="badge info">XHTTP · stream-up</span>';
+  const dl = daysLeft(l.expires_at);
+  const expLabel = !l.expires_at ? '<span class="meta"><i class="ti ti-infinity"></i> never</span>'
+    : dl > 0 ? `<span class="meta"><i class="ti ti-calendar"></i> ${dl}d</span>`
+    : '<span class="meta"><i class="ti ti-calendar-x"></i> expired</span>';
+  const lim = l.limit_bytes === 0 ? '∞' : fmtB(l.limit_bytes);
+  return `
+    <div class="config-card ${l.active ? '' : 'is-inactive'}">
+      <div class="config-body">
+        <div class="config-head">
+          <div>
+            <div class="config-name">${esc(l.label)}</div>
+            <div class="config-uuid">${esc(l.uuid.slice(0, 16))}…</div>
+          </div>
+          ${statusPill}
+        </div>
+        <div class="config-tags">
+          ${protoBadge}
+          ${l.connections > 0 ? `<span class="badge ok">${l.connections} live</span>` : ''}
+        </div>
+        <div class="progress" style="margin-top:12px"><div class="fill ${fillClass}" style="width:${pct}%"></div></div>
+        <div class="progress-meta">
+          <span>${fmtB(l.used_bytes)} / ${lim}</span>
+          <span>${pct.toFixed(0)}%</span>
+        </div>
+      </div>
+      <div class="config-tear"></div>
+      <div class="config-foot" style="flex-direction:column;align-items:stretch;gap:8px">
+        <div class="meta" style="justify-content:space-between">
+          <span><i class="ti ti-route"></i> :${l.port || 443}</span>
+          ${expLabel}
+        </div>
+        <button class="cfg-link-toggle" onclick="toggleLink(${i}, this)">
+          <span><i class="ti ti-eye"></i> Show config link</span>
+          <i class="ti ti-chevron-down"></i>
+        </button>
+        <div class="cfg-link-wrap" id="link-wrap-${i}">
+          <div class="cfg-link-inner">
+            <div class="cfg-link">${esc(l.vless_link)}</div>
+          </div>
+        </div>
+        <div class="row" style="gap:6px">
+          <button class="btn btn-primary btn-sm" style="flex:1" onclick="copyRaw(window._links[${i}].vless)"><i class="ti ti-copy"></i> Copy</button>
+          <button class="btn btn-secondary btn-sm" onclick="showQR(window._links[${i}].label, window._links[${i}].vless)"><i class="ti ti-qrcode"></i> QR</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
 
-async function autoRefresh(){{
-  try{{
-    const data = await loadData(savedPw);
-    if (!data.locked) renderContent(data);
-  }} catch(e) {{}}
-}}
+function toggleLink(i, btn){
+  const wrap = document.getElementById('link-wrap-' + i);
+  const isOpen = wrap.classList.toggle('open');
+  btn.querySelector('span').innerHTML = isOpen
+    ? '<i class="ti ti-eye-off"></i> Hide config link'
+    : '<i class="ti ti-eye"></i> Show config link';
+  const chevron = btn.querySelector('.ti-chevron-down, .ti-chevron-up');
+  if (chevron) chevron.className = isOpen ? 'ti ti-chevron-up' : 'ti ti-chevron-down';
+}
 
-async function init(){{
-  try{{
-    const data = await loadData();
-    if (data.locked) {{ renderLock(data.name); return; }}
+let refreshTimer = null;
+function scheduleRefresh(){
+  if (refreshTimer) clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(async () => {
+    try {
+      const data = await fetchData(savedPw);
+      if (!data.locked) renderContent(data);
+    } catch (e) {}
+  }, 30000);
+}
+
+/* Init */
+async function init(){
+  try {
+    const data = await fetchData();
+    if (data.locked){ renderLock(data.name); return; }
+    currentData = data;
     renderContent(data);
-  }} catch(e) {{
-    document.getElementById('root').innerHTML =
-      '<div class="empty-state" style="color:var(--red-t)"><i class="ti ti-alert-circle"></i>Failed to load</div>';
-  }}
-}}
-
+  } catch (e){
+    document.getElementById('root').innerHTML = '<div class="empty-hero"><div class="ic" style="color:var(--err-fg)"><i class="ti ti-alert-circle"></i></div><div class="text-sm" style="color:var(--err-fg)">Failed to load</div></div>';
+  }
+}
 init();
 </script>
-</body></html>"""
+</body>
+</html>"""
+
+
+def get_public_page_html(uuid_key: str, name: str = "Shared access group") -> str:
+    """Render the public sub-group page for a given UUID key.
+    The actual content (name, configs) is fetched client-side by the page
+    through /api/public/sub/{uuid_key}; only the title uses the passed name
+    as a first-paint hint."""
+    html = _PUBLIC_PAGE_TEMPLATE.replace("__UUID_KEY__", uuid_key)
+    html = html.replace("__NAME__", name)
+    return html
